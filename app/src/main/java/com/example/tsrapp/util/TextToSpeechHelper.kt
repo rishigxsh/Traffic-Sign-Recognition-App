@@ -23,7 +23,7 @@ class TextToSpeechHelper(private val context: Context) {
     }
     
     fun speak(text: String) {
-        if (isInitialized && tts != null) {
+        if (isInitialized && tts != null && SettingsManager.isTtsEnabled(context)) {
             tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
         }
     }

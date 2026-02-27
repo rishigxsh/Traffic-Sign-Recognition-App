@@ -1,28 +1,355 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/black"
+    android:orientation="vertical"
+    android:background="@color/tsr_bg"
     tools:context=".ui.main.MainActivity">
 
-    <androidx.camera.view.PreviewView
-        android:id="@+id/cameraPreview"
+    <!-- ── Dark camera area ─────────────────────────────── -->
+    <FrameLayout
+        android:id="@+id/cameraFrame"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="@color/tsr_camera_bg">
 
-    <com.example.tsrapp.ui.main.DetectionOverlayView
-        android:id="@+id/detectionOverlay"
+        <androidx.camera.view.PreviewView
+            android:id="@+id/cameraPreview"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <com.example.tsrapp.ui.main.DetectionOverlayView
+            android:id="@+id/detectionOverlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <!-- Scan-line grid overlay (visible only while scanning) -->
+        <View
+            android:id="@+id/scanGridOverlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/scan_grid"
+            android:visibility="gone" />
+
+        <!-- Corner brackets -->
+        <View
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="top|start"
+            android:layout_margin="18dp"
+            android:background="@drawable/corner_tl" />
+
+        <View
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="top|end"
+            android:layout_margin="18dp"
+            android:background="@drawable/corner_tr" />
+
+        <View
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="bottom|start"
+            android:layout_margin="18dp"
+            android:background="@drawable/corner_bl" />
+
+        <View
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="18dp"
+            android:background="@drawable/corner_br" />
+
+        <!-- HUD top-left: status + FPS -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|start"
+            android:layout_marginStart="52dp"
+            android:layout_marginTop="14dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/hudStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/live_standby"
+                android:textColor="@color/tsr_scan_yellow"
+                android:textSize="11sp"
+                android:fontFamily="monospace" />
+
+            <TextView
+                android:id="@+id/statusFps"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/status_fps_default"
+                android:textColor="@color/tsr_scan_yellow"
+                android:textSize="11sp"
+                android:fontFamily="monospace" />
+        </LinearLayout>
+
+        <!-- HUD top-right: region + model -->
+        <TextView
+            android:id="@+id/hudRegion"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|end"
+            android:layout_marginEnd="52dp"
+            android:layout_marginTop="14dp"
+            android:text="@string/hud_region_info_placeholder"
+            android:textColor="@color/tsr_scan_yellow"
+            android:textSize="11sp"
+            android:fontFamily="monospace" />
+
+        <!-- Critical alert banner (shown on critical sign) -->
+        <LinearLayout
+            android:id="@+id/criticalAlertBanner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:layout_margin="16dp"
+            android:background="@drawable/bg_critical_alert"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="14dp"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/live_critical_symbol"
+                android:textSize="22sp" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/criticalAlertTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/live_critical_alert"
+                    android:textColor="@color/white"
+                    android:textSize="13sp"
+                    android:fontFamily="sans-serif-black" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/live_driver_alert_triggered"
+                    android:textColor="#FFCCCC"
+                    android:textSize="11sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Back arrow (top-left, drawn on top) -->
+        <ImageButton
+            android:id="@+id/backButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="top|start"
+            android:layout_margin="12dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/back_to_home"
+            android:padding="12dp"
+            android:src="@drawable/ic_arrow_back"
+            app:tint="@color/white" />
+    </FrameLayout>
+
+    <!-- ── White bottom panel ───────────────────────────── -->
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@color/tsr_card"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingTop="20dp"
+        android:paddingBottom="24dp">
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+        <!-- Detection result row (shown when a sign is detected) -->
+        <LinearLayout
+            android:id="@+id/detectionResultRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="16dp"
+            android:baselineAligned="false"
+            android:visibility="gone">
+
+            <!-- Sign badge placeholder -->
+            <FrameLayout
+                android:id="@+id/signBadgeFrame"
+                android:layout_width="58dp"
+                android:layout_height="58dp"
+                android:background="@drawable/bg_sign_badge"
+                android:layout_marginEnd="14dp">
+
+                <TextView
+                    android:id="@+id/signBadgeSymbol"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:textColor="@color/white"
+                    android:textSize="18sp"
+                    android:fontFamily="sans-serif-black"
+                    android:text="@string/sign_placeholder_30" />
+            </FrameLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/detectedSignName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/sign_placeholder_name"
+                    android:textColor="@color/tsr_text_primary"
+                    android:textSize="19sp"
+                    android:fontFamily="sans-serif-black" />
+
+                <TextView
+                    android:id="@+id/detectedSignType"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/sign_placeholder_type"
+                    android:textColor="@color/tsr_text_hint"
+                    android:textSize="11sp"
+                    android:fontFamily="sans-serif-medium" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="end">
+
+                <TextView
+                    android:id="@+id/detectedConfidence"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/sign_placeholder_confidence"
+                    android:textColor="@color/tsr_speed"
+                    android:textSize="28sp"
+                    android:fontFamily="sans-serif-black" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/live_confidence_label"
+                    android:textColor="@color/tsr_text_hint"
+                    android:textSize="11sp"
+                    android:letterSpacing="0.1" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Confidence progress bar (shown when detected) -->
+        <View
+            android:id="@+id/confidenceTrack"
+            android:layout_width="match_parent"
+            android:layout_height="8dp"
+            android:layout_marginBottom="16dp"
+            android:background="@drawable/bg_progress_track"
+            android:visibility="gone" />
+
+        <FrameLayout
+            android:id="@+id/confidenceBarWrapper"
+            android:layout_width="match_parent"
+            android:layout_height="8dp"
+            android:layout_marginTop="-24dp"
+            android:layout_marginBottom="16dp"
+            android:visibility="gone">
+
+            <View
+                android:id="@+id/confidenceBar"
+                android:layout_width="0dp"
+                android:layout_height="8dp"
+                android:background="@drawable/bg_progress_fill" />
+        </FrameLayout>
+
+        <!-- Idle hint (shown when not scanning) -->
+        <TextView
+            android:id="@+id/idleHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20dp"
+            android:text="@string/live_idle"
+            android:textColor="@color/tsr_text_hint"
+            android:textSize="14sp"
+            android:gravity="center" />
+
+        <!-- Scanning indicator (shown while scanning, no detection yet) -->
+        <TextView
+            android:id="@+id/scanningLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20dp"
+            android:text="@string/live_scanning"
+            android:textColor="@color/tsr_text_hint"
+            android:textSize="13sp"
+            android:gravity="center"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.05"
+            android:visibility="gone" />
+
+        <!-- Status row: voice + threshold -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:id="@+id/statusVoice"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/status_voice_on"
+                android:textColor="@color/tsr_text_secondary"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/statusThreshold"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/status_threshold_default"
+                android:textColor="@color/tsr_text_secondary"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/statusInference"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:text="@string/status_inference_default"
+                android:textColor="@color/tsr_text_secondary"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <!-- Start / Stop button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/toggleDetectionButton"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="@string/status_detection_start"
+            android:textAllCaps="false"
+            android:textSize="16sp"
+            android:fontFamily="sans-serif-black"
+            app:backgroundTint="@color/tsr_navy"
+            app:cornerRadius="16dp" />
+
+    </LinearLayout>
+
+</LinearLayout>

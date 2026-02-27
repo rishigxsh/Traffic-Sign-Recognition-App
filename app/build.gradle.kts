@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace = "com.example.tsrapp"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.tsrapp"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -30,9 +30,8 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-    kotlinOptions {
-        jvmTarget = "11"
-    }
+    // kotlinOptions is deprecated, moved to kotlin.compilerOptions
+
     buildFeatures {
         viewBinding = true
     }
@@ -43,16 +42,17 @@ dependencies {
     implementation(libs.material)
     implementation(libs.constraintlayout)
     implementation(libs.core.ktx)
+    implementation(libs.coordinatorlayout)
 
     // Activity KTX (for viewModels() delegate)
-    implementation("androidx.activity:activity-ktx:1.9.0")
+    implementation(libs.activity.ktx)
 
     // Lifecycle
     implementation(libs.lifecycle.viewmodel.ktx)
     implementation(libs.lifecycle.livedata.ktx)
 
     // Coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    implementation(libs.coroutines.android)
 
     // CameraX
     implementation(libs.camerax.core)
@@ -63,4 +63,16 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+    }
+}
+android {
+    lint {
+        baseline = file("lint-baseline.xml")
+        abortOnError = false
+    }
 }

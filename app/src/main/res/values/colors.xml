@@ -1,5 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Brand / nav -->
+    <color name="tsr_navy">#1A1A2E</color>
+    <color name="tsr_navy_light">#2A2A4A</color>
+
+    <!-- Surface -->
+    <color name="tsr_bg">#F7F7F9</color>
+    <color name="tsr_card">#FFFFFF</color>
+    <color name="tsr_divider">#F0F0F0</color>
+
+    <!-- Text - user-friendly contrast and readability -->
+    <color name="tsr_text_primary">#1A1A2E</color>
+    <color name="tsr_text_secondary">#5A5A6E</color>
+    <color name="tsr_text_hint">#7A7A8E</color>
+
+    <!-- Sign type accent colours -->
+    <color name="tsr_critical">#C1121F</color>
+    <color name="tsr_speed">#E07C24</color>
+    <color name="tsr_warning">#D4A017</color>
+    <color name="tsr_info">#2A9D8F</color>
+
+    <!-- Camera overlay -->
+    <color name="tsr_scan_yellow">#F4D03F</color>
+    <color name="tsr_camera_bg">#1A2035</color>
+
+    <!-- Legacy (kept for DetectionOverlayView) -->
     <color name="navy_500">#1E3A8A</color>
     <color name="navy_700">#1E40AF</color>
     <color name="blue_200">#93C5FD</color>

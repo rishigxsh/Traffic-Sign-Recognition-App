@@ -2,4 +2,134 @@
     <string name="app_name">Traffic Sign Recognition</string>
     <string name="camera_permission_required">Camera permission is required for this app to function</string>
     <string name="camera_permission_denied">Camera permission denied. Please enable it in settings.</string>
+
+    <!-- Home -->
+    <string name="home_eyebrow">NAVIGATION</string>
+    <string name="home_title">TSR App</string>
+    <string name="home_subtitle">Real-time traffic sign detection for safer driving.</string>
+    <string name="home_live_detection">📷  Live Detection</string>
+    <string name="home_live_detection_desc">Point camera at signs for real-time recognition</string>
+    <string name="home_test_mode">🧪  Testing &amp; Training</string>
+    <string name="home_test_mode_desc">Run model tests on sample datasets</string>
+    <string name="home_settings">⚙️  Settings</string>
+    <string name="home_settings_desc">Configure voice, overlays, region and model</string>
+    <string name="home_version">TSR App v1.0 · GTSRB · CNN Architecture</string>
+
+    <!-- Live detection -->
+    <string name="live_eyebrow">CAMERA</string>
+    <string name="live_title">Live Detection</string>
+    <string name="live_standby">○ STANDBY</string>
+    <string name="live_rec">● REC</string>
+    <string name="live_scanning">Scanning for signs…</string>
+    <string name="live_idle">Point camera at a traffic sign to begin detection</string>
+    <string name="live_detected_label">DETECTED</string>
+    <string name="live_confidence_label">CONFIDENCE</string>
+    <string name="live_scan_again">Scan Again</string>
+    <string name="live_pause">Pause</string>
+    <string name="live_critical_alert">⚠️ CRITICAL SIGN DETECTED</string>
+    <string name="live_critical_symbol">⚠️</string>
+    <string name="live_driver_alert_triggered">Driver alert triggered</string>
+    <string name="hud_region_info_placeholder">EU · CNN v2.1</string>
+    <string name="sign_placeholder_name">Speed Limit 30</string>
+    <string name="sign_placeholder_30">30</string>
+    <string name="sign_placeholder_type">SPEED · DETECTED</string>
+    <string name="sign_placeholder_confidence">97%</string>
+
+    <!-- Status bar -->
+    <string name="status_fps_default">FPS: &#8212;</string>
+    <string name="status_fps_value">%1$d FPS</string>
+    <string name="status_inference_default">Inference: &#8212; ms</string>
+    <string name="status_inference_value">%1$d ms</string>
+    <string name="status_threshold_default">Threshold: &#8212;</string>
+    <string name="status_threshold_value">Threshold: %1$d%%</string>
+    <string name="status_voice_on">🔊 Voice: On</string>
+    <string name="status_voice_off">🔇 Voice: Off</string>
+    <string name="status_detection_start">Start Detection</string>
+    <string name="status_detection_stop">Stop Detection</string>
+    <string name="status_detection_starting">Starting…</string>
+
+    <!-- Test / Training -->
+    <string name="test_eyebrow">MODE</string>
+    <string name="test_title">Testing &amp; Training</string>
+    <string name="test_tab_test">Test</string>
+    <string name="test_tab_train">Train</string>
+    <string name="test_tab_metrics">Metrics</string>
+    <string name="test_sample_header">SAMPLE DATASETS</string>
+    <string name="test_images_count">%1$d images</string>
+    <string name="test_accuracy_label">ACCURACY</string>
+    <string name="test_run_button">Run Test</string>
+    <string name="test_view_images">View Images</string>
+    <string name="test_running">Running…</string>
+    <string name="test_complete_title">✓ Test Complete</string>
+    <string name="test_complete_desc">Accuracy: %1$.1f%% · %2$d images processed</string>
+    <string name="test_upload_title">Upload Images / Video</string>
+    <string name="test_upload_desc">JPG, PNG, MP4 supported</string>
+    <string name="test_pick_image">📁  Pick from Gallery</string>
+    <string name="train_config_title">Model Configuration</string>
+    <string name="train_start_button">Start Fine-Tuning</string>
+    <string name="train_signs_title">Sign Categories</string>
+    <string name="metrics_accuracy_title">Per-Class Accuracy</string>
+    <string name="metrics_matrix_title">Confusion Matrix</string>
+    <string name="test_mode_title">Testing &amp; Training</string>
+    <string name="test_mode_subtitle">Run your model on sample images or gallery photos.</string>
+    <string name="test_subtitle_attached">sample images or gallery photos.</string>
+    <string name="test_mode_pick_image">Pick image from gallery</string>
+    <string name="test_mode_results_title">Detections</string>
+    <string name="test_mode_no_results">No detections yet. Pick an image to get started.</string>
+    <string name="test_mode_accuracy_default">Accuracy: &#8212;</string>
+    <string name="test_mode_precision_default">Precision: &#8212;</string>
+    <string name="test_mode_recall_default">Recall: &#8212;</string>
+    <string name="test_mode_timing_default">Avg. inference: &#8212; ms</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_eyebrow">PREFERENCES</string>
+    <string name="settings_detection_header">DETECTION</string>
+    <string name="settings_voice_label">Voice Feedback</string>
+    <string name="settings_voice_desc">Announce detected sign names</string>
+    <string name="settings_alerts_label">Driver Alerts</string>
+    <string name="settings_alerts_desc">Vibrate on critical signs</string>
+    <string name="settings_ar_label">AR Overlay</string>
+    <string name="settings_ar_desc">Augmented reality camera mode</string>
+    <string name="settings_connectivity_header">CONNECTIVITY</string>
+    <string name="settings_offline_label">Offline Mode</string>
+    <string name="settings_offline_desc">Use preloaded local datasets</string>
+    <string name="settings_night_label">Night Mode</string>
+    <string name="settings_night_desc">Enhanced low-light detection</string>
+    <string name="settings_region_header">REGION / SIGN STANDARD</string>
+    <string name="settings_region_eu">EU</string>
+    <string name="settings_region_us">US</string>
+    <string name="settings_region_asia">ASIA</string>
+    <string name="settings_model_header">MODEL</string>
+    <string name="settings_about_version">TSR App v1.0</string>
+    <string name="settings_about_subtitle">Traffic Sign Recognition</string>
+    <string name="settings_about_detail">GTSRB Dataset · CNN Architecture · Offline-first</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_tts_title">Voice (Text-to-Speech)</string>
+    <string name="settings_tts_enable">Enable voice feedback</string>
+    <string name="settings_tts_test_button">Test voice</string>
+    <string name="settings_tts_test_phrase">Speed limit 30.</string>
+    <string name="settings_overlays_title">Detection overlays</string>
+    <string name="settings_show_boxes">Show bounding boxes</string>
+    <string name="settings_show_labels">Show labels</string>
+    <string name="settings_show_confidence">Show confidence scores</string>
+    <string name="settings_conf_threshold">Confidence threshold</string>
+    <string name="settings_conf_threshold_value">%1$d%%</string>
+    <string name="settings_region_title">Region</string>
+    <string name="hud_region_info">%1$s · CNN v2.1</string>
+
+    <string-array name="settings_region_options">
+        <item>Automatic</item>
+        <item>US / North America</item>
+        <item>Europe (Vienna Convention)</item>
+        <item>Asia / Other</item>
+    </string-array>
+
+    <!-- Shared -->
+    <string name="back_to_home">Back to home</string>
+    <string name="dark_mode">Dark mode</string>
+    <string name="start_detection">Start detection</string>
 </resources>
