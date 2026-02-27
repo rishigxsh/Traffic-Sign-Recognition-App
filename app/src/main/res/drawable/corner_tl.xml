@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- top bar -->
+    <item android:bottom="20dp" android:right="0dp">
+        <shape><solid android:color="#F4D03F"/></shape>
+    </item>
+    <!-- left bar -->
+    <item android:top="0dp" android:right="20dp">
+        <shape><solid android:color="#F4D03F"/></shape>
+    </item>
+    <!-- inner cutout -->
+    <item android:top="2dp" android:left="2dp">
+        <shape><solid android:color="@android:color/transparent"/></shape>
+    </item>
+</layer-list>
