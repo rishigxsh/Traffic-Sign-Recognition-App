@@ -60,32 +60,7 @@ Built with Kotlin + CameraX + ONNX Runtime for Android.
 
 ## Backend (Python ML Pipeline)
 
-Trains a YOLOv8 nano model on the GTSRB dataset (43 German traffic sign classes).
-
-**Setup:**
-```bash
-python3.11 setup.py          # Creates venv + installs all dependencies
-source venv/bin/activate     # Mac/Linux
-# OR
-.\venv\Scripts\activate      # Windows
-```
-
-**Run the full pipeline:**
-```bash
-# 1. Download and prepare the GTSRB dataset
-python model/prepare_dataset.py
-
-# 2. Train the YOLOv8 model (50 epochs, resumable)
-python model/train.py
-
-# 3. Evaluate the trained model
-python model/test.py
-
-# 4. Export to ONNX for Android
-python model/export_to_onnx.py
-```
-
-**After export**, copy `exports/model.onnx` → `app/src/main/assets/model.onnx`
+** Add run instructions for ml pipelin here**
 
 ---
 
