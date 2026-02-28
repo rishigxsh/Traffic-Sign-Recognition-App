@@ -87,3 +87,32 @@ ehthumbs.db
 # ----- Signing Keys (NEVER COMMIT THESE) -----
 *.keystore
 *.jks
+
+# ----- Python -----
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+*.egg
+
+# ----- ML Model Files (large binaries - share separately) -----
+*.pt
+*.pth
+*.onnx
+*.tflite
+*.pb
+
+# ----- YOLO Training Output -----
+runs/
+
+# ----- GTSRB Dataset (too large for git) -----
+dataset/
+model/dataset/
+
+# ----- ML Results -----
+model/results.csv
+exports/

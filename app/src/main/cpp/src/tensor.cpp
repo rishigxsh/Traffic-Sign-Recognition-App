@@ -159,21 +159,25 @@ void Tensor::transpose(const std::vector<int>& order) {
     contiguous = false;
 }
 
-Tensor Tensor::broadcast(const std::vector<int>& newShape) { // BROKEN IDK MAN
+Tensor Tensor::broadcast(const std::vector<int>& newShape) {
     assert(newShape.size() >= shape.size());
 
-    for (int i = 0; i < shape.size(); ++i) {
+    for (int i = 0; i < (int)shape.size(); ++i) {
         int dim = shape[shape.size() - 1 - i];
         int newDim = newShape[newShape.size() - 1 - i];
         assert(newDim == dim || dim == 1); // check if shape is broadcastable
     }
 
+    // Ensure contiguous layout before broadcasting
+    if (!contiguous) makeContiguous();
+
     Tensor result(newShape, device);
 
+    // Compute contiguous strides for the source tensor
     std::vector<int> mult(shape.size(), 0);
     if (!shape.empty()) {
         mult[shape.size() - 1] = 1;
-        for (int i = shape.size() - 2; i >= 0; --i) {
+        for (int i = (int)shape.size() - 2; i >= 0; --i) {
             mult[i] = mult[i + 1] * shape[i + 1];
         }
     }
@@ -181,17 +185,18 @@ Tensor Tensor::broadcast(const std::vector<int>& newShape) { // BROKEN IDK MAN
     std::vector<int> index(newShape.size(), 0);
     for (int i = 0; i < result.totalSize; ++i) {
         int lin = 0;
-        for (int j = 0; j < shape.size(); ++j) {
-            int target = newShape.size() - shape.size() + j;
+        for (int j = 0; j < (int)shape.size(); ++j) {
+            int target = (int)newShape.size() - (int)shape.size() + j;
             int idx = (shape[j] == 1) ? 0 : index[target];
             lin += idx * mult[j];
         }
 
         result.cpuData[i] = cpuData[lin];
 
-        for (int j = newShape.size() - 1; j >= 0; --j) {
+        // Advance index in the OUTPUT (newShape) space — was previously wrong (used shape[j])
+        for (int j = (int)newShape.size() - 1; j >= 0; --j) {
             index[j]++;
-            if (index[j] < shape[j]) break;
+            if (index[j] < newShape[j]) break;
             index[j] = 0;
         }
     }

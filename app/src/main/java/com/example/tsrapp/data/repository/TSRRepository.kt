@@ -1,28 +1,32 @@
 package com.example.tsrapp.data.repository
 
+import android.content.Context
 import android.graphics.Bitmap
 import com.example.tsrapp.data.model.TrafficSign
-import kotlinx.coroutines.delay
+import com.example.tsrapp.ml.OnnxInferenceEngine
+import com.example.tsrapp.util.SettingsManager
 
-class TSRRepository {
+class TSRRepository(context: Context) {
+
+    private val engine = OnnxInferenceEngine(context)
+    private val appContext = context.applicationContext
+
     /**
-     * Detects traffic signs in a camera frame.
+     * Detects traffic signs in a camera frame using on-device YOLOv8 ONNX inference.
      *
-     * This method should be implemented to:
-     * 1. Load your ML model (TensorFlow Lite, ML Kit, etc.)
-     * 2. Preprocess the bitmap (resize, normalize, etc.)
-     * 3. Run inference
-     * 4. Post-process results (NMS, thresholding, etc.)
-     * 5. Convert to TrafficSign objects
+     * Returns an empty list if the model file (assets/model.onnx) has not been placed yet.
+     * Confidence threshold is read from SettingsManager (user-configurable, default 0.5).
      *
      * @param bitmap The camera frame as a Bitmap
-     * @return List of detected traffic signs
+     * @return List of detected traffic signs with bounding boxes and labels
      */
     suspend fun detectSignsInFrame(bitmap: Bitmap): List<TrafficSign> {
-        // TODO: Implement ML model inference here
-        // For now, return empty list
-        delay(100) // Simulate processing time
-        return emptyList()
+        if (!engine.isModelLoaded) return emptyList()
+        val threshold = SettingsManager.getConfidenceThreshold(appContext)
+        return engine.detect(bitmap, threshold)
+    }
+
+    fun close() {
+        engine.close()
     }
 }
-

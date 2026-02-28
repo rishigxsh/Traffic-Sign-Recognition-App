@@ -198,6 +198,7 @@ void Logger::close() {
 void Logger::log(LogLevel level, const std::string& message, const std::string& component) {
     if (!initialized || level < currentLevel) return;
 
+    std::lock_guard<std::mutex> lock(logMutex);
     std::ostringstream oss;
     oss << message;
     if (!component.empty()) {

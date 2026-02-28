@@ -92,7 +92,7 @@ private:
     std::ofstream logFile;
     LogLevel currentLevel;
     bool consoleOutput;
-    // std::mutex logMutex; // Temporarily disabled for compilation
+    std::mutex logMutex;
     bool initialized;
 };
 
