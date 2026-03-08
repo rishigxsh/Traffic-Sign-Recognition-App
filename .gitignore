@@ -112,6 +112,7 @@ runs/
 # ----- GTSRB Dataset (too large for git) -----
 dataset/
 model/dataset/
+mtsd_yolo/
 
 # ----- ML Results -----
 model/results.csv
