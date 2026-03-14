@@ -3,3 +3,6 @@ yolov8n.pt
 yolov8s.pt
 mtsd_yolo/
 dataset/
+mtsd_detection_only/
+contact_sheets/
+lisa_contact_sheets/
