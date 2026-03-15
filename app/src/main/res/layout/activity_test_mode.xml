@@ -76,9 +76,9 @@
         <ImageView
             android:id="@+id/previewImage"
             android:layout_width="match_parent"
-            android:layout_height="200dp"
+            android:layout_height="300dp"
             android:layout_marginTop="20dp"
-            android:scaleType="centerCrop"
+            android:scaleType="fitCenter"
             android:background="@color/tsr_divider"
             android:visibility="gone"
             android:contentDescription="@string/test_upload_title" />
