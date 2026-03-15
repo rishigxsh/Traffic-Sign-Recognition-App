@@ -11,25 +11,15 @@ using on-device YOLOv8 inference — no internet connection required.
 ```
 TrafficSignRecognitionApp/
 │
-├── app/                        ← FRONTEND (Android App)
+├── app/                        ← Android App
 │   └── src/main/
 │       ├── java/               ← Kotlin source code
 │       ├── cpp/                ← C++ native tensor/logging utilities
 │       ├── res/                ← UI layouts, colors, themes
 │       └── assets/             ← Place model.onnx here when ready
 │
-├── model/                      ← BACKEND (Python ML Pipeline)
-│   ├── train.py                ← Train YOLOv8 on GTSRB dataset
-│   ├── inference.py            ← Run inference on test images
-│   ├── test.py                 ← Evaluate model (accuracy, IoU, confusion matrix)
-│   ├── prepare_dataset.py      ← Download + convert GTSRB dataset to YOLO format
-│   ├── export_to_onnx.py       ← Export trained model to ONNX for Android
-│   └── utils/                  ← Dataset helpers (download, conversion, YAML gen)
-│
-├── requirements.txt            ← BACKEND — Python dependencies (pinned versions)
-├── setup.py                    ← BACKEND — Auto-creates Python venv + installs deps
-├── build.gradle.kts            ← FRONTEND — Root Gradle build file
-└── settings.gradle.kts         ← FRONTEND — Gradle project settings
+├── build.gradle.kts            ← Root Gradle build file
+└── settings.gradle.kts         ← Gradle project settings
 ```
 
 ---
@@ -58,24 +48,18 @@ Built with Kotlin + CameraX + ONNX Runtime for Android.
 
 ---
 
-## Backend (Python ML Pipeline)
+## Backend (ML Pipeline)
 
-** Add run instructions for ml pipelin here**
+ML training pipeline is maintained separately. The exported `model.onnx` file should be placed in `app/src/main/assets/`.
 
 ---
 
-## How Frontend + Backend Connect
+## How It Works
 
 ```
-Python training pipeline
+model.onnx loaded by OnnxInferenceEngine.kt
         ↓
-  exports model.onnx
-        ↓
-  placed in assets/
-        ↓
-OnnxInferenceEngine.kt loads model
-        ↓
-Camera frame → preprocess → YOLOv8 inference → NMS → TrafficSign list
+Camera frame → letterbox preprocess → YOLOv8 inference → NMS → TrafficSign list
         ↓
 DetectionOverlayView draws boxes + TTS speaks sign name
 ```
@@ -89,14 +73,11 @@ DetectionOverlayView draws boxes + TTS speaks sign name
 | Android UI | Kotlin, CameraX, MVVM, LiveData |
 | On-device inference | ONNX Runtime for Android 1.16.3 |
 | Native utilities | C++ (Tensor class, Logger, JNI) |
-| Model training | Python, YOLOv8 (Ultralytics), PyTorch |
-| Dataset | GTSRB — 43 traffic sign classes |
-| Model format | ONNX (exported from YOLOv8) |
+| Model | YOLOv8 (39 US traffic sign classes), ONNX format |
 
 ---
 
 ## Requirements
 
 - **Android**: API 24+ (Android 7.0), physical device with camera recommended
-- **Python**: 3.9 – 3.12
 - **NDK**: 25.2.9519653 (install via Android Studio SDK Manager)
