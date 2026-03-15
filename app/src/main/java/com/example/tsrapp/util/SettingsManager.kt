@@ -79,7 +79,7 @@ object SettingsManager {
     }
 
     fun getConfidenceThreshold(context: Context): Float =
-        prefs(context).getFloat(KEY_CONFIDENCE_THRESHOLD, 0.5f)
+        prefs(context).getFloat(KEY_CONFIDENCE_THRESHOLD, 0.20f)
 
     fun setConfidenceThreshold(context: Context, threshold: Float) {
         prefs(context).edit {

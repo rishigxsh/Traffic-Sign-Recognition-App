@@ -16,7 +16,8 @@ import java.nio.FloatBuffer
  * Export from the Python pipeline: python model/export_to_onnx.py
  *
  * Model input:  [1, 3, 640, 640] float32, RGB, normalized [0, 1]
- * Model output: [1, 47, 8400]    where 47 = 4 (cx,cy,w,h) + 43 class scores
+ * Model output: [1, 43, 8400]    where 43 = 4 (cx,cy,w,h) + 39 class scores
+ * Note: trained model contains 39 of the 43 GTSRB classes (classes 0–38).
  */
 class OnnxInferenceEngine(context: Context) {
 
@@ -26,63 +27,62 @@ class OnnxInferenceEngine(context: Context) {
     companion object {
         private const val MODEL_FILE = "model.onnx"
         private const val INPUT_SIZE = 640
-        private const val NUM_CLASSES = 43
+        private const val NUM_CLASSES = 39   // actual classes in exported model (GTSRB 0–38)
         private const val NUM_ANCHORS = 8400
         private const val IOU_THRESHOLD = 0.45f
 
-        // GTSRB 43-class label names (class index matches training order)
+        // US traffic sign class label names — 39 classes matching the trained model
         val CLASS_NAMES = arrayOf(
-            "Speed limit (20km/h)",
-            "Speed limit (30km/h)",
-            "Speed limit (50km/h)",
-            "Speed limit (60km/h)",
-            "Speed limit (70km/h)",
-            "Speed limit (80km/h)",
-            "End of speed limit (80km/h)",
-            "Speed limit (100km/h)",
-            "Speed limit (120km/h)",
-            "No passing",
-            "No passing (>3.5t)",
-            "Right-of-way at intersection",
-            "Priority road",
-            "Yield",
-            "Stop",
-            "No vehicles",
-            "No vehicles (>3.5t)",
-            "No entry",
-            "General caution",
-            "Dangerous curve left",
-            "Dangerous curve right",
-            "Double curve",
-            "Bumpy road",
-            "Slippery road",
-            "Road narrows on right",
-            "Road work",
-            "Traffic signals",
-            "Pedestrians",
-            "Children crossing",
-            "Bicycles crossing",
-            "Beware of ice/snow",
-            "Wild animals crossing",
-            "End of all limits",
-            "Turn right ahead",
-            "Turn left ahead",
-            "Ahead only",
-            "Go straight or right",
-            "Go straight or left",
-            "Keep right",
-            "Keep left",
-            "Roundabout mandatory",
-            "End of no passing",
-            "End of no passing (>3.5t)"
+            "Added Lane",                  // 0
+            "Curve Left",                  // 1
+            "Dip",                         // 2
+            "Intersection",                // 3
+            "Merge",                       // 4
+            "No Right Turn",               // 5
+            "Ramp Speed Advisory 20",      // 6
+            "Ramp Speed Advisory 35",      // 7
+            "Ramp Speed Advisory 40",      // 8
+            "Ramp Speed Advisory 45",      // 9
+            "Ramp Speed Advisory 50",      // 10
+            "Ramp Speed Advisory",         // 11
+            "Right Lane Must Turn",        // 12
+            "Roundabout",                  // 13
+            "School",                      // 14
+            "School Speed Limit 25",       // 15
+            "Signal Ahead",                // 16
+            "Slow",                        // 17
+            "Speed Limit 15",              // 18
+            "Speed Limit 25",              // 19
+            "Speed Limit 30",              // 20
+            "Speed Limit 35",              // 21
+            "Speed Limit 40",              // 22
+            "Speed Limit 45",              // 23
+            "Speed Limit 50",              // 24
+            "Speed Limit 55",              // 25
+            "Speed Limit 65",              // 26
+            "Speed Limit",                 // 27
+            "Stop",                        // 28
+            "Stop Ahead",                  // 29
+            "Thru Merge Left",             // 30
+            "Thru Traffic Merge Left",     // 31
+            "Truck Speed Limit 55",        // 32
+            "Turn Left",                   // 33
+            "Turn Right",                  // 34
+            "Yield",                       // 35
+            "Yield Ahead",                 // 36
+            "Zone Ahead 25",               // 37
+            "Zone Ahead 45"                // 38
         )
 
         // Class IDs that trigger urgent voice + visual alerts
         private val CRITICAL_CLASS_IDS = setOf(
-            14, // Stop
-            13, // Yield
-            17, // No entry
-            0, 1, 2, 3, 4, 5, 7, 8 // Speed limits
+            28,                            // Stop
+            29,                            // Stop Ahead
+            35,                            // Yield
+            36,                            // Yield Ahead
+            14,                            // School
+            15,                            // School Speed Limit 25
+            18, 19, 20, 21, 22, 23, 24, 25, 26  // Speed limits
         )
     }
 
@@ -120,9 +120,6 @@ class OnnxInferenceEngine(context: Context) {
         @Suppress("UNCHECKED_CAST")
         val output = (results[0].value as Array<Array<FloatArray>>)[0]
 
-        val scaleX = bitmap.width.toFloat() / INPUT_SIZE
-        val scaleY = bitmap.height.toFloat() / INPUT_SIZE
-
         val detections = mutableListOf<FloatArray>() // [x1, y1, x2, y2, conf, classId]
 
         for (a in 0 until NUM_ANCHORS) {
@@ -131,7 +128,7 @@ class OnnxInferenceEngine(context: Context) {
             val w  = output[2][a]
             val h  = output[3][a]
 
-            // Find best class score across all 43 classes
+            // Find best class score across all 39 classes
             var maxScore = 0f
             var classId = -1
             for (c in 0 until NUM_CLASSES) {
@@ -144,11 +141,11 @@ class OnnxInferenceEngine(context: Context) {
 
             if (maxScore < confidenceThreshold) continue
 
-            // Convert normalized center format → pixel corner format
-            val x1 = (cx - w / 2f) * INPUT_SIZE * scaleX
-            val y1 = (cy - h / 2f) * INPUT_SIZE * scaleY
-            val x2 = (cx + w / 2f) * INPUT_SIZE * scaleX
-            val y2 = (cy + h / 2f) * INPUT_SIZE * scaleY
+            // Map from 640x640 letterbox space back to original bitmap coordinates
+            val x1 = (cx - w / 2f - letterboxPadX) / letterboxScale
+            val y1 = (cy - h / 2f - letterboxPadY) / letterboxScale
+            val x2 = (cx + w / 2f - letterboxPadX) / letterboxScale
+            val y2 = (cy + h / 2f - letterboxPadY) / letterboxScale
 
             detections.add(floatArrayOf(x1, y1, x2, y2, maxScore, classId.toFloat()))
         }
@@ -173,11 +170,32 @@ class OnnxInferenceEngine(context: Context) {
         }
     }
 
-    // Resize bitmap to 640x640, normalize to [0,1], return NCHW float array
+    // Letterbox bitmap to 640x640 (maintain aspect ratio, pad with gray),
+    // normalize to [0,1], return NCHW float array.
+    // Sets letterboxPadX/Y and letterboxScale for coordinate mapping.
+    private var letterboxPadX = 0
+    private var letterboxPadY = 0
+    private var letterboxScale = 1f
+
     private fun preprocess(bitmap: Bitmap): FloatArray {
-        val resized = Bitmap.createScaledBitmap(bitmap, INPUT_SIZE, INPUT_SIZE, true)
+        val srcW = bitmap.width
+        val srcH = bitmap.height
+        letterboxScale = minOf(INPUT_SIZE.toFloat() / srcW, INPUT_SIZE.toFloat() / srcH)
+        val newW = (srcW * letterboxScale).toInt()
+        val newH = (srcH * letterboxScale).toInt()
+        letterboxPadX = (INPUT_SIZE - newW) / 2
+        letterboxPadY = (INPUT_SIZE - newH) / 2
+
+        val resized = Bitmap.createScaledBitmap(bitmap, newW, newH, true)
+
+        // Create 640x640 canvas with gray (114,114,114) background
+        val letterboxed = Bitmap.createBitmap(INPUT_SIZE, INPUT_SIZE, Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(letterboxed)
+        canvas.drawColor(Color.rgb(114, 114, 114))
+        canvas.drawBitmap(resized, letterboxPadX.toFloat(), letterboxPadY.toFloat(), null)
+
         val pixels = IntArray(INPUT_SIZE * INPUT_SIZE)
-        resized.getPixels(pixels, 0, INPUT_SIZE, 0, 0, INPUT_SIZE, INPUT_SIZE)
+        letterboxed.getPixels(pixels, 0, INPUT_SIZE, 0, 0, INPUT_SIZE, INPUT_SIZE)
 
         val floatArray = FloatArray(3 * INPUT_SIZE * INPUT_SIZE)
         val channelSize = INPUT_SIZE * INPUT_SIZE
@@ -190,6 +208,7 @@ class OnnxInferenceEngine(context: Context) {
         }
 
         if (resized != bitmap) resized.recycle()
+        letterboxed.recycle()
         return floatArray
     }
 
