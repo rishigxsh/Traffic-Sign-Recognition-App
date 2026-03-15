@@ -50,6 +50,10 @@ android {
     buildFeatures {
         viewBinding = true
     }
+
+    androidResources {
+        noCompress += "onnx"
+    }
 }
 
 dependencies {
