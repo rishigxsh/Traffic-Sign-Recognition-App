@@ -18,6 +18,12 @@ TrafficSignRecognitionApp/
 │       ├── res/                ← UI layouts, colors, themes
 │       └── assets/             ← Place model.onnx here when ready
 │
+├── model_training/             ← ML training notebooks & experiment results
+│   ├── baseline_yolo.ipynb     ← YOLOv8 training notebook
+│   ├── download_datasets.ipynb ← Dataset download (Mapillary + LISA)
+│   ├── experiments/            ← Training results, confusion matrices, curves
+│   └── *.ipynb / *.csv         ← Class review notebooks and data
+│
 ├── build.gradle.kts            ← Root Gradle build file
 └── settings.gradle.kts         ← Gradle project settings
 ```
@@ -50,7 +56,14 @@ Built with Kotlin + CameraX + ONNX Runtime for Android.
 
 ## Backend (ML Pipeline)
 
-ML training pipeline is maintained separately. The exported `model.onnx` file should be placed in `app/src/main/assets/`.
+Training code lives in `model_training/`. The pipeline uses Mapillary Traffic Sign Dataset v2 + LISA (Roboflow), merged into a unified YOLO-format dataset with 55 US traffic sign classes.
+
+Three trained models are available (weights shared via Google Drive, not in repo):
+- **ATSD_Roboflow_640_Yolov8n** — 39 classes, 12 MB ONNX, drop-in compatible
+- **Map+LISA_640_Yolo8s** — 55 classes, 43 MB ONNX, higher accuracy
+- **MAP+LISA_1280_Yolov8s** — 55 classes, best metrics (88% mAP50), requires 1280 input
+
+The exported `model.onnx` file should be placed in `app/src/main/assets/`.
 
 ---
 
@@ -73,7 +86,7 @@ DetectionOverlayView draws boxes + TTS speaks sign name
 | Android UI | Kotlin, CameraX, MVVM, LiveData |
 | On-device inference | ONNX Runtime for Android 1.16.3 |
 | Native utilities | C++ (Tensor class, Logger, JNI) |
-| Model | YOLOv8 (39 US traffic sign classes), ONNX format |
+| Model | YOLOv8 (up to 55 US traffic sign classes), ONNX format |
 
 ---
 
