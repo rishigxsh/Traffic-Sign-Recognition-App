@@ -6,3 +6,10 @@ dataset/
 mtsd_detection_only/
 contact_sheets/
 lisa_contact_sheets/
+
+*.mp4
+*.MOV
+*.pt
+*.jpg
+*.png
+*.onnx

@@ -1,0 +1,8 @@
+other
+regulatory--maximum-speed-limit-25--g2
+regulatory--maximum-speed-limit-30--g3
+regulatory--maximum-speed-limit-35--g2
+regulatory--maximum-speed-limit-40--g3
+regulatory--maximum-speed-limit-45--g3
+regulatory--maximum-speed-limit-55--g2
+regulatory--maximum-speed-limit-65--g2
