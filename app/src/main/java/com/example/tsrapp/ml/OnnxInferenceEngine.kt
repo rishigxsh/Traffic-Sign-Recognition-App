@@ -6,92 +6,70 @@ import ai.onnxruntime.OrtSession
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.util.Log
 import com.example.tsrapp.data.model.TrafficSign
+import org.json.JSONObject
 import java.nio.FloatBuffer
 
 /**
  * Runs YOLOv8 ONNX inference on-device for traffic sign detection.
  *
- * Place the exported model at: app/src/main/assets/model.onnx
- * Export from the Python pipeline: python model/export_to_onnx.py
+ * Model and class list are loaded from: app/src/main/assets/US/
+ *   - best.onnx          : exported YOLOv8 model
+ *   - classes.json       : {"0": "class-name", "1": "class-name", ...}
  *
  * Model input:  [1, 3, 640, 640] float32, RGB, normalized [0, 1]
- * Model output: [1, 43, 8400]    where 43 = 4 (cx,cy,w,h) + 39 class scores
- * Note: trained model contains 39 of the 43 GTSRB classes (classes 0–38).
+ * Model output: [1, 4+num_classes, 8400]
+ *   Rows 0-3  → bounding box [cx, cy, w, h] in normalized 640x640 space
+ *   Rows 4+   → class confidence scores
  */
 class OnnxInferenceEngine(context: Context) {
 
     private val ortEnv: OrtEnvironment = OrtEnvironment.getEnvironment()
     private val ortSession: OrtSession?
 
+    /** Class names loaded from assets/US/classes.json, index == key */
+    val classNames: Array<String>
+
+    /** Number of classes derived from classNames */
+    private val numClasses: Int
+
     companion object {
-        private const val MODEL_FILE = "model.onnx"
-        private const val INPUT_SIZE = 640
-        private const val NUM_CLASSES = 39   // actual classes in exported model (GTSRB 0–38)
-        private const val NUM_ANCHORS = 8400
+        private const val TAG = "OnnxInferenceEngine"
+        private const val MODEL_FILE    = "US/best.onnx"
+        private const val CLASSES_FILE  = "US/classes.json"
+        private const val INPUT_SIZE    = 640
+        private const val NUM_ANCHORS   = 8400
         private const val IOU_THRESHOLD = 0.45f
-
-        // US traffic sign class label names — 39 classes matching the trained model
-        val CLASS_NAMES = arrayOf(
-            "Added Lane",                  // 0
-            "Curve Left",                  // 1
-            "Dip",                         // 2
-            "Intersection",                // 3
-            "Merge",                       // 4
-            "No Right Turn",               // 5
-            "Ramp Speed Advisory 20",      // 6
-            "Ramp Speed Advisory 35",      // 7
-            "Ramp Speed Advisory 40",      // 8
-            "Ramp Speed Advisory 45",      // 9
-            "Ramp Speed Advisory 50",      // 10
-            "Ramp Speed Advisory",         // 11
-            "Right Lane Must Turn",        // 12
-            "Roundabout",                  // 13
-            "School",                      // 14
-            "School Speed Limit 25",       // 15
-            "Signal Ahead",                // 16
-            "Slow",                        // 17
-            "Speed Limit 15",              // 18
-            "Speed Limit 25",              // 19
-            "Speed Limit 30",              // 20
-            "Speed Limit 35",              // 21
-            "Speed Limit 40",              // 22
-            "Speed Limit 45",              // 23
-            "Speed Limit 50",              // 24
-            "Speed Limit 55",              // 25
-            "Speed Limit 65",              // 26
-            "Speed Limit",                 // 27
-            "Stop",                        // 28
-            "Stop Ahead",                  // 29
-            "Thru Merge Left",             // 30
-            "Thru Traffic Merge Left",     // 31
-            "Truck Speed Limit 55",        // 32
-            "Turn Left",                   // 33
-            "Turn Right",                  // 34
-            "Yield",                       // 35
-            "Yield Ahead",                 // 36
-            "Zone Ahead 25",               // 37
-            "Zone Ahead 45"                // 38
-        )
-
-        // Class IDs that trigger urgent voice + visual alerts
-        private val CRITICAL_CLASS_IDS = setOf(
-            28,                            // Stop
-            29,                            // Stop Ahead
-            35,                            // Yield
-            36,                            // Yield Ahead
-            14,                            // School
-            15,                            // School Speed Limit 25
-            18, 19, 20, 21, 22, 23, 24, 25, 26  // Speed limits
-        )
     }
 
     init {
+        // --- Load class names ---
+        classNames = try {
+            val json = context.assets.open(CLASSES_FILE).bufferedReader().readText()
+            val obj  = JSONObject(json)
+            Array(obj.length()) { i -> obj.getString(i.toString()) }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to load $CLASSES_FILE", e)
+            emptyArray()
+        }
+        numClasses = classNames.size
+        Log.i(TAG, "Loaded $numClasses classes from $CLASSES_FILE")
+
+        // --- Load ONNX model ---
         ortSession = try {
             val modelBytes = context.assets.open(MODEL_FILE).readBytes()
-            ortEnv.createSession(modelBytes, OrtSession.SessionOptions())
+            val opts = OrtSession.SessionOptions().apply {
+                // NNAPI is disabled: it causes a SIGFPE (FPE_INTDIV) crash during session
+                // creation on x86_64 emulators. On a real ARM device you can re-enable it
+                // by calling addNnapi() here, but it is not needed for correctness.
+                setIntraOpNumThreads(4)
+            }
+            val session = ortEnv.createSession(modelBytes, opts)
+            Log.i(TAG, "ONNX session created from $MODEL_FILE (CPU)")
+            session
         } catch (e: Exception) {
-            // Model not yet available — will return empty detections until placed in assets
+            Log.e(TAG, "Failed to load $MODEL_FILE", e)
             null
         }
     }
@@ -104,19 +82,18 @@ class OnnxInferenceEngine(context: Context) {
      */
     fun detect(bitmap: Bitmap, confidenceThreshold: Float): List<TrafficSign> {
         val session = ortSession ?: return emptyList()
+        if (numClasses == 0) return emptyList()
 
-        // 1. Preprocess: resize to 640x640, normalize, convert to NCHW float array
+        // 1. Preprocess: letterbox to 640x640, normalize, NCHW float array
         val inputData = preprocess(bitmap)
-        val shape = longArrayOf(1, 3, INPUT_SIZE.toLong(), INPUT_SIZE.toLong())
+        val shape     = longArrayOf(1, 3, INPUT_SIZE.toLong(), INPUT_SIZE.toLong())
 
         // 2. Run inference
-        val inputName = session.inputNames.iterator().next()
+        val inputName  = session.inputNames.iterator().next()
         val inputTensor = OnnxTensor.createTensor(ortEnv, FloatBuffer.wrap(inputData), shape)
-        val results = session.run(mapOf(inputName to inputTensor))
+        val results    = session.run(mapOf(inputName to inputTensor))
 
-        // 3. Parse output: shape [1][47][8400]
-        //    Rows 0-3  → bounding box [cx, cy, w, h] in normalized 640x640 space
-        //    Rows 4-46 → class confidence scores
+        // 3. Parse output: shape [1][4+numClasses][8400]
         @Suppress("UNCHECKED_CAST")
         val output = (results[0].value as Array<Array<FloatArray>>)[0]
 
@@ -128,14 +105,13 @@ class OnnxInferenceEngine(context: Context) {
             val w  = output[2][a]
             val h  = output[3][a]
 
-            // Find best class score across all 39 classes
             var maxScore = 0f
-            var classId = -1
-            for (c in 0 until NUM_CLASSES) {
+            var classId  = -1
+            for (c in 0 until numClasses) {
                 val score = output[4 + c][a]
                 if (score > maxScore) {
                     maxScore = score
-                    classId = c
+                    classId  = c
                 }
             }
 
@@ -150,14 +126,15 @@ class OnnxInferenceEngine(context: Context) {
             detections.add(floatArrayOf(x1, y1, x2, y2, maxScore, classId.toFloat()))
         }
 
-        // 4. Non-Maximum Suppression to remove overlapping boxes
+        // 4. Non-Maximum Suppression
         val kept = nms(detections, IOU_THRESHOLD)
 
         // 5. Map to TrafficSign domain objects
         return kept.map { det ->
-            val id = det[5].toInt()
+            val id    = det[5].toInt()
+            val label = classNames.getOrElse(id) { "Unknown ($id)" }
             TrafficSign(
-                label = CLASS_NAMES.getOrElse(id) { "Unknown ($id)" },
+                label      = label,
                 confidence = det[4],
                 boundingBox = TrafficSign.BoundingBox(
                     left   = det[0].coerceAtLeast(0f),
@@ -165,14 +142,12 @@ class OnnxInferenceEngine(context: Context) {
                     right  = det[2].coerceAtMost(bitmap.width.toFloat()),
                     bottom = det[3].coerceAtMost(bitmap.height.toFloat())
                 ),
-                isCritical = id in CRITICAL_CLASS_IDS
+                isCritical = false
             )
         }
     }
 
-    // Letterbox bitmap to 640x640 (maintain aspect ratio, pad with gray),
-    // normalize to [0,1], return NCHW float array.
-    // Sets letterboxPadX/Y and letterboxScale for coordinate mapping.
+    // Letterbox to 640x640, normalize [0,1], return NCHW float array.
     private var letterboxPadX = 0
     private var letterboxPadY = 0
     private var letterboxScale = 1f
@@ -186,25 +161,22 @@ class OnnxInferenceEngine(context: Context) {
         letterboxPadX = (INPUT_SIZE - newW) / 2
         letterboxPadY = (INPUT_SIZE - newH) / 2
 
-        val resized = Bitmap.createScaledBitmap(bitmap, newW, newH, true)
-
-        // Create 640x640 canvas with gray (114,114,114) background
+        val resized     = Bitmap.createScaledBitmap(bitmap, newW, newH, true)
         val letterboxed = Bitmap.createBitmap(INPUT_SIZE, INPUT_SIZE, Bitmap.Config.ARGB_8888)
-        val canvas = android.graphics.Canvas(letterboxed)
+        val canvas      = android.graphics.Canvas(letterboxed)
         canvas.drawColor(Color.rgb(114, 114, 114))
         canvas.drawBitmap(resized, letterboxPadX.toFloat(), letterboxPadY.toFloat(), null)
 
-        val pixels = IntArray(INPUT_SIZE * INPUT_SIZE)
+        val pixels      = IntArray(INPUT_SIZE * INPUT_SIZE)
         letterboxed.getPixels(pixels, 0, INPUT_SIZE, 0, 0, INPUT_SIZE, INPUT_SIZE)
 
-        val floatArray = FloatArray(3 * INPUT_SIZE * INPUT_SIZE)
+        val floatArray  = FloatArray(3 * INPUT_SIZE * INPUT_SIZE)
         val channelSize = INPUT_SIZE * INPUT_SIZE
-
         for (i in pixels.indices) {
             val px = pixels[i]
-            floatArray[i]                      = Color.red(px)   / 255f  // R channel
-            floatArray[channelSize + i]        = Color.green(px) / 255f  // G channel
-            floatArray[2 * channelSize + i]    = Color.blue(px)  / 255f  // B channel
+            floatArray[i]                   = Color.red(px)   / 255f
+            floatArray[channelSize + i]     = Color.green(px) / 255f
+            floatArray[2 * channelSize + i] = Color.blue(px)  / 255f
         }
 
         if (resized != bitmap) resized.recycle()
@@ -212,14 +184,12 @@ class OnnxInferenceEngine(context: Context) {
         return floatArray
     }
 
-    // Greedy NMS: sort by confidence, suppress boxes with IoU >= threshold
+    // Greedy NMS: sort by confidence descending, suppress boxes with IoU >= threshold
     private fun nms(detections: MutableList<FloatArray>, iouThreshold: Float): List<FloatArray> {
         if (detections.isEmpty()) return emptyList()
         detections.sortByDescending { it[4] }
-
-        val kept = mutableListOf<FloatArray>()
+        val kept       = mutableListOf<FloatArray>()
         val suppressed = BooleanArray(detections.size)
-
         for (i in detections.indices) {
             if (suppressed[i]) continue
             kept.add(detections[i])
@@ -233,13 +203,13 @@ class OnnxInferenceEngine(context: Context) {
     }
 
     private fun iou(a: FloatArray, b: FloatArray): Float {
-        val interX1 = maxOf(a[0], b[0])
-        val interY1 = maxOf(a[1], b[1])
-        val interX2 = minOf(a[2], b[2])
-        val interY2 = minOf(a[3], b[3])
+        val interX1   = maxOf(a[0], b[0])
+        val interY1   = maxOf(a[1], b[1])
+        val interX2   = minOf(a[2], b[2])
+        val interY2   = minOf(a[3], b[3])
         val interArea = maxOf(0f, interX2 - interX1) * maxOf(0f, interY2 - interY1)
-        val aArea = (a[2] - a[0]) * (a[3] - a[1])
-        val bArea = (b[2] - b[0]) * (b[3] - b[1])
+        val aArea     = (a[2] - a[0]) * (a[3] - a[1])
+        val bArea     = (b[2] - b[0]) * (b[3] - b[1])
         val unionArea = aArea + bArea - interArea
         return if (unionArea <= 0f) 0f else interArea / unionArea
     }
