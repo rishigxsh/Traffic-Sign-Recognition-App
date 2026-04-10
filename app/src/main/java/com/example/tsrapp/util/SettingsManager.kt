@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.edit
+import com.example.tsrapp.ml.ModelRegion
 
 object SettingsManager {
 
@@ -95,5 +96,12 @@ object SettingsManager {
             putString(KEY_REGION, region)
         }
     }
+
+    /**
+     * Returns the [ModelRegion] that corresponds to the currently saved region setting.
+     * Defaults to [ModelRegion.US] for any unrecognised value (e.g. "Automatic", "ASIA").
+     */
+    fun getModelRegion(context: Context): ModelRegion =
+        ModelRegion.fromString(getRegion(context))
 }
 

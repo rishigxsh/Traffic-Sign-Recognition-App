@@ -67,7 +67,10 @@ class TestModeActivity : AppCompatActivity() {
         binding = ActivityTestModeBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        inferenceEngine = OnnxInferenceEngine(this)
+        inferenceEngine = OnnxInferenceEngine(
+            context = this,
+            region  = SettingsManager.getModelRegion(this)
+        )
 
         binding.metricsAccuracy.text = getString(R.string.test_mode_accuracy_default)
         binding.metricsPrecision.text = getString(R.string.test_mode_precision_default)

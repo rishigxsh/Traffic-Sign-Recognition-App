@@ -15,15 +15,14 @@ import java.nio.FloatBuffer
  * Runs YOLOv8 ONNX inference on-device for traffic sign detection.
  *
  * Model and class list are loaded from: app/src/main/assets/
- *   - best.onnx          : exported YOLOv8 model
- *   - classes.json       : {"0": "class-name", "1": "class-name", ...}
+ *   Files are determined by [region] — see [ModelRegion] for asset name mappings.
  *
  * Model input:  [1, 3, 640, 640] float32, RGB, normalized [0, 1]
  * Model output: [1, 4+num_classes, 8400]
  *   Rows 0-3  → bounding box [cx, cy, w, h] in normalized 640x640 space
  *   Rows 4+   → class confidence scores
  */
-class OnnxInferenceEngine(context: Context) {
+class OnnxInferenceEngine(context: Context, region: ModelRegion = ModelRegion.US) {
 
     private val ortEnv: OrtEnvironment = OrtEnvironment.getEnvironment()
     private val ortSession: OrtSession?
@@ -36,29 +35,30 @@ class OnnxInferenceEngine(context: Context) {
 
     companion object {
         private const val TAG = "OnnxInferenceEngine"
-        private const val MODEL_FILE    = "us_best.onnx"
-        private const val CLASSES_FILE  = "us_classes.json"
         private const val INPUT_SIZE    = 640
         private const val NUM_ANCHORS   = 8400
         private const val IOU_THRESHOLD = 0.45f
     }
 
+    private val modelFile   = region.modelFile
+    private val classesFile = region.classesFile
+
     init {
         // --- Load class names ---
         classNames = try {
-            val json = context.assets.open(CLASSES_FILE).bufferedReader().readText()
+            val json = context.assets.open(classesFile).bufferedReader().readText()
             val obj  = JSONObject(json)
             Array(obj.length()) { i -> obj.getString(i.toString()) }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to load $CLASSES_FILE", e)
+            Log.e(TAG, "Failed to load $classesFile", e)
             emptyArray()
         }
         numClasses = classNames.size
-        Log.i(TAG, "Loaded $numClasses classes from $CLASSES_FILE")
+        Log.i(TAG, "Loaded $numClasses classes from $classesFile")
 
         // --- Load ONNX model ---
         ortSession = try {
-            val modelBytes = context.assets.open(MODEL_FILE).readBytes()
+            val modelBytes = context.assets.open(modelFile).readBytes()
             val opts = OrtSession.SessionOptions().apply {
                 // NNAPI is disabled: it causes a SIGFPE (FPE_INTDIV) crash during session
                 // creation on x86_64 emulators. On a real ARM device you can re-enable it
@@ -66,10 +66,10 @@ class OnnxInferenceEngine(context: Context) {
                 setIntraOpNumThreads(4)
             }
             val session = ortEnv.createSession(modelBytes, opts)
-            Log.i(TAG, "ONNX session created from $MODEL_FILE (CPU)")
+            Log.i(TAG, "ONNX session created from $modelFile (CPU, region=${region.displayName})")
             session
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to load $MODEL_FILE", e)
+            Log.e(TAG, "Failed to load $modelFile", e)
             null
         }
     }

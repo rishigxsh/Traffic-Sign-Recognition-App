@@ -8,8 +8,11 @@ import com.example.tsrapp.util.SettingsManager
 
 class TSRRepository(context: Context) {
 
-    private val engine = OnnxInferenceEngine(context)
     private val appContext = context.applicationContext
+    private val engine = OnnxInferenceEngine(
+        context = appContext,
+        region  = SettingsManager.getModelRegion(appContext)
+    )
 
     /**
      * Detects traffic signs in a camera frame using on-device YOLOv8 ONNX inference.
