@@ -6,7 +6,6 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import com.example.tsrapp.data.model.TrafficSign
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 
@@ -42,7 +41,7 @@ class VideoFileInference(
                                 onFrameResult(currentMs, bitmap, results)
                             }
 
-                        } catch (e: IllegalStateException) {
+                        } catch (_: IllegalStateException) {
                             // OrtSession was closed mid-inference (activity destroyed)
                             bitmap.recycle()
                             return@withContext

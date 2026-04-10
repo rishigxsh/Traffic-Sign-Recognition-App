@@ -14,6 +14,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.tsrapp.R
+import com.example.tsrapp.data.model.TrafficSign
 import com.example.tsrapp.databinding.ActivityTestModeBinding
 import com.example.tsrapp.ml.OnnxInferenceEngine
 import com.example.tsrapp.ml.VideoFileInference
@@ -23,7 +24,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.times
 import kotlinx.coroutines.channels.BufferOverflow
 
 class TestModeActivity : AppCompatActivity() {
@@ -92,7 +92,7 @@ class TestModeActivity : AppCompatActivity() {
 
     // Run inference for image files
     private fun runInference(uri: Uri) {
-        binding.resultsText.text = "Running inference..."
+        binding.resultsText.text = getString(R.string.test_mode_running_inference)
         binding.pickImageButton.isEnabled = false
 
         lifecycleScope.launch {
@@ -130,12 +130,12 @@ class TestModeActivity : AppCompatActivity() {
 
             // Update metrics
             val topConf = signs.maxOfOrNull { it.confidence } ?: 0f
-            binding.metricsAccuracy.text = "Detections: ${signs.size}"
-            binding.metricsPrecision.text = "Top confidence: ${"%.1f".format(topConf * 100)}%"
-            binding.metricsRecall.text = "Inference time: ${inferenceMs}ms"
+            binding.metricsAccuracy.text = getString(R.string.test_mode_metric_detections, signs.size)
+            binding.metricsPrecision.text = getString(R.string.test_mode_metric_top_confidence, topConf * 100)
+            binding.metricsRecall.text = getString(R.string.test_mode_metric_inference_time, inferenceMs)
 
             if (signs.isEmpty()) {
-                binding.resultsText.text = "No signs detected above ${(threshold * 100).toInt()}% confidence."
+                binding.resultsText.text = getString(R.string.test_mode_no_signs_threshold, (threshold * 100).toInt())
             } else {
                 val sb = StringBuilder()
                 signs.forEachIndexed { i, sign ->
@@ -152,7 +152,7 @@ class TestModeActivity : AppCompatActivity() {
 
     // Run inference for video files
     private fun runVideoInference(uri: Uri) {
-        binding.resultsText.text = "Processing video..."
+        binding.resultsText.text = getString(R.string.test_mode_processing_video)
         binding.pickImageButton.isEnabled = false
         binding.pickVideoButton.isEnabled = false
         binding.previewImage.visibility = View.VISIBLE
@@ -163,15 +163,12 @@ class TestModeActivity : AppCompatActivity() {
         // Channel buffers up to 2 annotated frames; drops old ones if UI is slow
         val frameChannel = Channel<Pair<Bitmap, String>>(capacity = 2, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
-        // vars for calculating FPS
-        var frameCount = 0
-        var fpsFrameCount = 0
-        var lastFpsTime = System.currentTimeMillis()
-
         videoJob = lifecycleScope.launch {
             // Producer: inference on Default dispatcher
             launch(Dispatchers.Default) {
                 var frameCount = 0
+                var fpsFrameCount = 0
+                var lastFpsTime = System.currentTimeMillis()
                 videoFileInference.processVideo(
                     context = this@TestModeActivity,
                     uri = uri,
@@ -190,7 +187,7 @@ class TestModeActivity : AppCompatActivity() {
                         lastFpsTime = now
 
                         withContext(Dispatchers.Main) {
-                            binding.fpsText.text = "FPS: ${"%.1f".format(fps)}"
+                            binding.fpsText.text = getString(R.string.test_mode_fps, fps)
                         }
                     }
 
@@ -207,14 +204,14 @@ class TestModeActivity : AppCompatActivity() {
                     binding.previewImage.setImageBitmap(bitmap)
                     binding.resultsText.text = label
                 }
-                binding.resultsText.text = "Done."
+                binding.resultsText.text = getString(R.string.test_mode_video_done)
                 binding.pickImageButton.isEnabled = true
                 binding.pickVideoButton.isEnabled = true
             }
         }
     }
 
-    private fun annotateFrame(frame: Bitmap, signs: List<com.example.tsrapp.data.model.TrafficSign>): Bitmap {
+    private fun annotateFrame(frame: Bitmap, signs: List<TrafficSign>): Bitmap {
         val annotated = frame.copy(Bitmap.Config.ARGB_8888, true)
         val canvas = Canvas(annotated)
         for (sign in signs) {
@@ -230,8 +227,8 @@ class TestModeActivity : AppCompatActivity() {
         return annotated
     }
 
-    private fun buildLabel(frameCount: Int, timestampMs: Long, signs: List<com.example.tsrapp.data.model.TrafficSign>): String {
-        return if (signs.isEmpty()) "Frame $frameCount (${timestampMs}ms): No signs"
+    private fun buildLabel(frameCount: Int, timestampMs: Long, signs: List<TrafficSign>): String {
+        return if (signs.isEmpty()) getString(R.string.test_mode_video_frame_label, frameCount, timestampMs)
         else signs.joinToString("\n") { "${it.label} ${"%.1f".format(it.confidence * 100)}%" }
     }
 

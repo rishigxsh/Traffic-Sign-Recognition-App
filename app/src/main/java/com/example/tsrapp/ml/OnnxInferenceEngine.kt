@@ -127,7 +127,7 @@ class OnnxInferenceEngine(context: Context, region: ModelRegion = ModelRegion.US
         }
 
         // 4. Non-Maximum Suppression
-        val kept = nms(detections, IOU_THRESHOLD)
+        val kept = nms(detections)
 
         // 5. Map to TrafficSign domain objects
         return kept.map { det ->
@@ -185,7 +185,7 @@ class OnnxInferenceEngine(context: Context, region: ModelRegion = ModelRegion.US
     }
 
     // Greedy NMS: sort by confidence descending, suppress boxes with IoU >= threshold
-    private fun nms(detections: MutableList<FloatArray>, iouThreshold: Float): List<FloatArray> {
+    private fun nms(detections: MutableList<FloatArray>): List<FloatArray> {
         if (detections.isEmpty()) return emptyList()
         detections.sortByDescending { it[4] }
         val kept       = mutableListOf<FloatArray>()
@@ -194,7 +194,7 @@ class OnnxInferenceEngine(context: Context, region: ModelRegion = ModelRegion.US
             if (suppressed[i]) continue
             kept.add(detections[i])
             for (j in i + 1 until detections.size) {
-                if (!suppressed[j] && iou(detections[i], detections[j]) >= iouThreshold) {
+                if (!suppressed[j] && iou(detections[i], detections[j]) >= IOU_THRESHOLD) {
                     suppressed[j] = true
                 }
             }
