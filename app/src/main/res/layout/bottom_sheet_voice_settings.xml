@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_bottom_sheet"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <!-- Header -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Voice Controls"
+            android:textColor="#1a1a1a"
+            android:textSize="26sp"
+            android:fontFamily="sans-serif-black" />
+
+        <ImageButton
+            android:id="@+id/closeButton"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_close"
+            app:tint="#1a1a1a" />
+    </RelativeLayout>
+
+    <!-- Voice Mode Selection (Horizontal Pills Like Apple Maps) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:weightSum="3"
+        android:gravity="center">
+
+        <!-- Muted Pill -->
+        <LinearLayout
+            android:id="@+id/modeMuted"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            
+            <FrameLayout
+                android:id="@+id/bgMuted"
+                android:layout_width="86dp"
+                android:layout_height="86dp"
+                android:background="@drawable/bg_pill_selected">
+                <ImageView
+                    android:id="@+id/iconMuted"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_mute"
+                    app:tint="#1a1a1a" />
+            </FrameLayout>
+            
+            <TextView
+                android:id="@+id/textMuted"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Muted"
+                android:textColor="#1a1a1a"
+                android:textSize="14sp"
+                android:fontFamily="sans-serif-medium" />
+        </LinearLayout>
+
+        <!-- Alerts Only Pill -->
+        <LinearLayout
+            android:id="@+id/modeAlerts"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            
+            <FrameLayout
+                android:id="@+id/bgAlerts"
+                android:layout_width="86dp"
+                android:layout_height="86dp"
+                android:background="@android:color/transparent">
+                <ImageView
+                    android:id="@+id/iconAlerts"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_alerts_only"
+                    android:alpha="0.4"
+                    app:tint="#1a1a1a" />
+            </FrameLayout>
+            
+            <TextView
+                android:id="@+id/textAlerts"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Alerts Only"
+                android:textColor="#999999"
+                android:textSize="14sp"
+                android:fontFamily="sans-serif-medium" />
+        </LinearLayout>
+
+        <!-- Unmuted Pill -->
+        <LinearLayout
+            android:id="@+id/modeUnmuted"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            
+            <FrameLayout
+                android:id="@+id/bgUnmuted"
+                android:layout_width="86dp"
+                android:layout_height="86dp"
+                android:background="@android:color/transparent">
+                <ImageView
+                    android:id="@+id/iconUnmuted"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_unmute"
+                    android:alpha="0.4"
+                    app:tint="#1a1a1a" />
+            </FrameLayout>
+            
+            <TextView
+                android:id="@+id/textUnmuted"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Unmuted"
+                android:textColor="#999999"
+                android:textSize="14sp"
+                android:fontFamily="sans-serif-medium" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:layout_marginBottom="12dp"
+        android:text="VOLUME"
+        android:textColor="#666666"
+        android:textSize="12sp"
+        android:fontFamily="sans-serif-black"
+        android:letterSpacing="0.1" />
+
+    <!-- Volume List -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_floating_card"
+        android:orientation="vertical"
+        android:padding="12dp">
+
+        <!-- Louder Row -->
+        <RelativeLayout
+            android:id="@+id/volLouderRow"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:background="?attr/selectableItemBackground">
+            
+            <ImageView
+                android:id="@+id/iconLouder"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_centerVertical="true"
+                android:src="@drawable/ic_unmute"
+                app:tint="#666666" />
+            
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:layout_marginStart="16dp"
+                android:layout_toEndOf="@id/iconLouder"
+                android:text="Louder"
+                android:textColor="#1a1a1a"
+                android:textSize="18sp"
+                android:fontFamily="sans-serif-medium" />
+                
+            <ImageView
+                android:id="@+id/checkLouder"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:src="@drawable/ic_check"
+                android:visibility="gone" />
+        </RelativeLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginStart="40dp"
+            android:background="#1A000000" />
+
+        <!-- Normal Row -->
+        <RelativeLayout
+            android:id="@+id/volNormalRow"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:background="?attr/selectableItemBackground">
+            
+            <ImageView
+                android:id="@+id/iconNormal"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_centerVertical="true"
+                android:src="@drawable/ic_unmute"
+                android:alpha="0.7"
+                app:tint="#666666" />
+            
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:layout_marginStart="16dp"
+                android:layout_toEndOf="@id/iconNormal"
+                android:text="Normal"
+                android:textColor="#1a1a1a"
+                android:textSize="18sp"
+                android:fontFamily="sans-serif-medium" />
+                
+            <ImageView
+                android:id="@+id/checkNormal"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:src="@drawable/ic_check"
+                android:visibility="visible" />
+        </RelativeLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginStart="40dp"
+            android:background="#1A000000" />
+
+        <!-- Softer Row -->
+        <RelativeLayout
+            android:id="@+id/volSofterRow"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:background="?attr/selectableItemBackground">
+            
+            <ImageView
+                android:id="@+id/iconSofter"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_centerVertical="true"
+                android:src="@drawable/ic_mute"
+                app:tint="#666666" />
+            
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:layout_marginStart="16dp"
+                android:layout_toEndOf="@id/iconSofter"
+                android:text="Softer"
+                android:textColor="#1a1a1a"
+                android:textSize="18sp"
+                android:fontFamily="sans-serif-medium" />
+                
+            <ImageView
+                android:id="@+id/checkSofter"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:src="@drawable/ic_check"
+                android:visibility="gone" />
+        </RelativeLayout>
+    </LinearLayout>
+
+</LinearLayout>
