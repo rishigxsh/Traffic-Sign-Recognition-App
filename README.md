@@ -16,7 +16,7 @@ TrafficSignRecognitionApp/
 │       ├── java/               ← Kotlin source code
 │       ├── cpp/                ← C++ native tensor/logging utilities
 │       ├── res/                ← UI layouts, colors, themes
-│       └── assets/             ← Place model.onnx here when ready
+│       └── assets/             ← Place model files here when ready
 │
 ├── model_training/             ← ML training notebooks & experiment results
 │   ├── baseline_yolo.ipynb     ← YOLOv8 training notebook
@@ -49,7 +49,7 @@ Built with Kotlin + CameraX + ONNX Runtime for Android.
 1. Open this folder in Android Studio
 2. Let Gradle sync complete
 3. Install NDK if prompted: SDK Manager → SDK Tools → NDK (Side by side)
-4. Place `model.onnx` in `app/src/main/assets/` (see Backend section to generate it)
+4. Download all assets from https://drive.google.com/drive/folders/1FukHfx1dAQjarpm8qcw3o0uh9AlFDOXW?usp=sharing and place them in `app/src/main/assets/`
 5. Connect an Android device (API 24+) and hit Run
 
 ---
@@ -59,9 +59,9 @@ Built with Kotlin + CameraX + ONNX Runtime for Android.
 Training code lives in `model_training/`. The pipeline uses Mapillary Traffic Sign Dataset v2 + LISA (Roboflow), merged into a unified YOLO-format dataset with 55 US traffic sign classes.
 
 Three trained models are available (weights shared via Google Drive, not in repo):
-- **ATSD_Roboflow_640_Yolov8n** — 39 classes, 12 MB ONNX, drop-in compatible
-- **Map+LISA_640_Yolo8s** — 55 classes, 43 MB ONNX, higher accuracy
-- **MAP+LISA_1280_Yolov8s** — 55 classes, best metrics (88% mAP50), requires 1280 input
+- **ATSD_Roboflow_640_Yolov8n** — 51 classes, 12 MB ONNX, drop-in compatible
+- **Map+LISA_640_Yolo8s** — 51 classes, 43 MB ONNX, higher accuracy
+- **MAP+LISA_1280_Yolov8s** — 51 classes, best metrics (88% mAP50), requires 1280 input
 
 The exported `model.onnx` file should be placed in `app/src/main/assets/`.
 

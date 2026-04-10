@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.edit
+import com.example.tsrapp.ml.ModelRegion
 
 object SettingsManager {
 
@@ -27,11 +28,6 @@ object SettingsManager {
     fun getThemeMode(context: Context): String =
         prefs(context).getString(KEY_THEME_MODE, THEME_SYSTEM) ?: THEME_SYSTEM
 
-    fun setThemeMode(context: Context, mode: String) {
-        prefs(context).edit {
-            putString(KEY_THEME_MODE, mode)
-        }
-    }
 
     fun applyTheme(mode: String) {
         val nightMode = when (mode) {
@@ -63,20 +59,10 @@ object SettingsManager {
     fun isShowLabels(context: Context): Boolean =
         prefs(context).getBoolean(KEY_SHOW_LABELS, true)
 
-    fun setShowLabels(context: Context, show: Boolean) {
-        prefs(context).edit {
-            putBoolean(KEY_SHOW_LABELS, show)
-        }
-    }
 
     fun isShowConfidence(context: Context): Boolean =
         prefs(context).getBoolean(KEY_SHOW_CONFIDENCE, true)
 
-    fun setShowConfidence(context: Context, show: Boolean) {
-        prefs(context).edit {
-            putBoolean(KEY_SHOW_CONFIDENCE, show)
-        }
-    }
 
     fun getConfidenceThreshold(context: Context): Float =
         prefs(context).getFloat(KEY_CONFIDENCE_THRESHOLD, 0.20f)
@@ -95,5 +81,12 @@ object SettingsManager {
             putString(KEY_REGION, region)
         }
     }
+
+    /**
+     * Returns the [ModelRegion] that corresponds to the currently saved region setting.
+     * Defaults to [ModelRegion.US] for any unrecognised value (e.g. "Automatic", "ASIA").
+     */
+    fun getModelRegion(context: Context): ModelRegion =
+        ModelRegion.fromString(getRegion(context))
 }
 

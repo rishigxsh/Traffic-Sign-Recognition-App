@@ -14,21 +14,20 @@ import java.nio.FloatBuffer
 /**
  * Runs YOLOv8 ONNX inference on-device for traffic sign detection.
  *
- * Model and class list are loaded from: app/src/main/assets/US/
- *   - best.onnx          : exported YOLOv8 model
- *   - classes.json       : {"0": "class-name", "1": "class-name", ...}
+ * Model and class list are loaded from: app/src/main/assets/
+ *   Files are determined by [region] — see [ModelRegion] for asset name mappings.
  *
  * Model input:  [1, 3, 640, 640] float32, RGB, normalized [0, 1]
  * Model output: [1, 4+num_classes, 8400]
  *   Rows 0-3  → bounding box [cx, cy, w, h] in normalized 640x640 space
  *   Rows 4+   → class confidence scores
  */
-class OnnxInferenceEngine(context: Context) {
+class OnnxInferenceEngine(context: Context, region: ModelRegion = ModelRegion.US) {
 
     private val ortEnv: OrtEnvironment = OrtEnvironment.getEnvironment()
-    private val ortSession: OrtSession?
+    private var ortSession: OrtSession?
 
-    /** Class names loaded from assets/US/classes.json, index == key */
+    /** Class names loaded from assets/classes.json, index == key */
     val classNames: Array<String>
 
     /** Number of classes derived from classNames */
@@ -36,29 +35,30 @@ class OnnxInferenceEngine(context: Context) {
 
     companion object {
         private const val TAG = "OnnxInferenceEngine"
-        private const val MODEL_FILE    = "US/best.onnx"
-        private const val CLASSES_FILE  = "US/classes.json"
         private const val INPUT_SIZE    = 640
         private const val NUM_ANCHORS   = 8400
         private const val IOU_THRESHOLD = 0.45f
     }
 
+    private val modelFile   = region.modelFile
+    private val classesFile = region.classesFile
+
     init {
         // --- Load class names ---
         classNames = try {
-            val json = context.assets.open(CLASSES_FILE).bufferedReader().readText()
+            val json = context.assets.open(classesFile).bufferedReader().readText()
             val obj  = JSONObject(json)
             Array(obj.length()) { i -> obj.getString(i.toString()) }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to load $CLASSES_FILE", e)
+            Log.e(TAG, "Failed to load $classesFile", e)
             emptyArray()
         }
         numClasses = classNames.size
-        Log.i(TAG, "Loaded $numClasses classes from $CLASSES_FILE")
+        Log.i(TAG, "Loaded $numClasses classes from $classesFile")
 
         // --- Load ONNX model ---
         ortSession = try {
-            val modelBytes = context.assets.open(MODEL_FILE).readBytes()
+            val modelBytes = context.assets.open(modelFile).readBytes()
             val opts = OrtSession.SessionOptions().apply {
                 // NNAPI is disabled: it causes a SIGFPE (FPE_INTDIV) crash during session
                 // creation on x86_64 emulators. On a real ARM device you can re-enable it
@@ -66,10 +66,10 @@ class OnnxInferenceEngine(context: Context) {
                 setIntraOpNumThreads(4)
             }
             val session = ortEnv.createSession(modelBytes, opts)
-            Log.i(TAG, "ONNX session created from $MODEL_FILE (CPU)")
+            Log.i(TAG, "ONNX session created from $modelFile (CPU, region=${region.displayName})")
             session
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to load $MODEL_FILE", e)
+            Log.e(TAG, "Failed to load $modelFile", e)
             null
         }
     }
@@ -89,9 +89,9 @@ class OnnxInferenceEngine(context: Context) {
         val shape     = longArrayOf(1, 3, INPUT_SIZE.toLong(), INPUT_SIZE.toLong())
 
         // 2. Run inference
-        val inputName  = session.inputNames.iterator().next()
+        val inputName   = session.inputNames.iterator().next()
         val inputTensor = OnnxTensor.createTensor(ortEnv, FloatBuffer.wrap(inputData), shape)
-        val results    = session.run(mapOf(inputName to inputTensor))
+        val results     = session.run(mapOf(inputName to inputTensor))
 
         // 3. Parse output: shape [1][4+numClasses][8400]
         @Suppress("UNCHECKED_CAST")
@@ -127,20 +127,34 @@ class OnnxInferenceEngine(context: Context) {
         }
 
         // 4. Non-Maximum Suppression
-        val kept = nms(detections, IOU_THRESHOLD)
+        val kept = nms(detections)
 
-        // 5. Map to TrafficSign domain objects
-        return kept.map { det ->
+        // 5. Map to TrafficSign domain objects — clamp boxes to bitmap bounds,
+        //    enforce minimum size before clamping so coerce order never violates bounds
+        return kept.mapNotNull { det ->
             val id    = det[5].toInt()
             val label = classNames.getOrElse(id) { "Unknown ($id)" }
+
+            val bitmapW = bitmap.width.toFloat()
+            val bitmapH = bitmap.height.toFloat()
+
+            // Clamp all four edges to bitmap bounds
+            val left   = det[0].coerceIn(0f, bitmapW)
+            val top    = det[1].coerceIn(0f, bitmapH)
+            val right  = det[2].coerceIn(0f, bitmapW)
+            val bottom = det[3].coerceIn(0f, bitmapH)
+
+            // Skip detections that are completely outside or have zero area after clamping
+            if (right <= left || bottom <= top) return@mapNotNull null
+
             TrafficSign(
-                label      = label,
-                confidence = det[4],
+                label       = label,
+                confidence  = det[4],
                 boundingBox = TrafficSign.BoundingBox(
-                    left   = det[0].coerceAtLeast(0f),
-                    top    = det[1].coerceAtLeast(0f),
-                    right  = det[2].coerceAtMost(bitmap.width.toFloat()),
-                    bottom = det[3].coerceAtMost(bitmap.height.toFloat())
+                    left   = left,
+                    top    = top,
+                    right  = right,
+                    bottom = bottom
                 ),
                 isCritical = false
             )
@@ -185,7 +199,7 @@ class OnnxInferenceEngine(context: Context) {
     }
 
     // Greedy NMS: sort by confidence descending, suppress boxes with IoU >= threshold
-    private fun nms(detections: MutableList<FloatArray>, iouThreshold: Float): List<FloatArray> {
+    private fun nms(detections: MutableList<FloatArray>): List<FloatArray> {
         if (detections.isEmpty()) return emptyList()
         detections.sortByDescending { it[4] }
         val kept       = mutableListOf<FloatArray>()
@@ -194,7 +208,7 @@ class OnnxInferenceEngine(context: Context) {
             if (suppressed[i]) continue
             kept.add(detections[i])
             for (j in i + 1 until detections.size) {
-                if (!suppressed[j] && iou(detections[i], detections[j]) >= iouThreshold) {
+                if (!suppressed[j] && iou(detections[i], detections[j]) >= IOU_THRESHOLD) {
                     suppressed[j] = true
                 }
             }
@@ -216,6 +230,7 @@ class OnnxInferenceEngine(context: Context) {
 
     fun close() {
         ortSession?.close()
+        ortSession = null
         ortEnv.close()
     }
 }
