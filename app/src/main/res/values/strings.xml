@@ -4,6 +4,12 @@
     <string name="camera_permission_denied">Camera permission denied. Please enable it in settings.</string>
 
     <!-- Home -->
+    <string name="landing_eyebrow">Welcome</string>
+    <string name="landing_title">Let's get started!</string>
+    <string name="landing_subtitle">Launch the traffic sign recognition experience and head into the main page.</string>
+    <string name="landing_cta">Open main page</string>
+    <string name="landing_hint">Tap the button to continue</string>
+
     <string name="home_eyebrow">NAVIGATION</string>
     <string name="home_title">TSR App</string>
     <string name="home_subtitle">Real-time traffic sign detection for safer driving.</string>
@@ -74,6 +80,12 @@
     <string name="test_mode_subtitle">Run your model on sample images or gallery photos.</string>
     <string name="test_subtitle_attached">sample images or gallery photos.</string>
     <string name="test_mode_pick_image">Pick image from gallery</string>
+    <string name="test_mode_pick_video">Pick video from gallery</string>
+    <string name="test_mode_video_running">Processing video…</string>
+    <string name="test_mode_video_no_frames">Could not read frames from this video.</string>
+    <string name="test_mode_live_video_hint">Playing video — signs appear on screen as they are detected. Inference may lag slightly on long clips.</string>
+    <string name="test_mode_live_status">● Live detection</string>
+    <string name="test_mode_video_ended">Playback finished.</string>
     <string name="test_mode_results_title">Detections</string>
     <string name="test_mode_no_results">No detections yet. Pick an image to get started.</string>
     <string name="test_mode_accuracy_default">Accuracy: &#8212;</string>
@@ -111,6 +123,7 @@
     <string name="settings_tts_title">Voice (Text-to-Speech)</string>
     <string name="settings_tts_enable">Enable voice feedback</string>
     <string name="settings_tts_test_button">Test voice</string>
+    <string name="settings_tts_turn_on_first">Turn on “Voice feedback” above, then try again.</string>
     <string name="settings_tts_test_phrase">Speed limit 30.</string>
     <string name="settings_overlays_title">Detection overlays</string>
     <string name="settings_show_boxes">Show bounding boxes</string>
@@ -131,5 +144,7 @@
     <!-- Shared -->
     <string name="back_to_home">Back to home</string>
     <string name="dark_mode">Dark mode</string>
+    <string name="gallery_pick_image">Pick from gallery</string>
+    <string name="gallery_image_desc">Selected image for detection</string>
     <string name="start_detection">Start detection</string>
 </resources>

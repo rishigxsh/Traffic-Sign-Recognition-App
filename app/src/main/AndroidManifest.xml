@@ -2,7 +2,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.VIBRATE" />
     <uses-feature android:name="android.hardware.camera" android:required="true" />
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+    </queries>
 
     <application
         android:name=".TSRApplication"
@@ -17,7 +23,7 @@
         android:theme="@style/Theme.TSRApp">
 
         <activity
-            android:name=".ui.main.HomeActivity"
+            android:name=".ui.main.LandingActivity"
             android:exported="true"
             android:screenOrientation="unspecified">
             <intent-filter>
@@ -26,6 +32,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".ui.main.HomeActivity"
+            android:exported="true"
+            android:screenOrientation="unspecified" />
 
         <activity
             android:name=".ui.main.MainActivity"
