@@ -4,11 +4,8 @@
     <string name="camera_permission_denied">Camera permission denied. Please enable it in settings.</string>
 
     <!-- Home -->
-    <string name="landing_eyebrow">Welcome</string>
-    <string name="landing_title">Let's get started!</string>
-    <string name="landing_subtitle">Launch the traffic sign recognition experience and head into the main page.</string>
-    <string name="landing_cta">Open main page</string>
-    <string name="landing_hint">Tap the button to continue</string>
+    <string name="landing_title">Traffic Sign Recognition App</string>
+    <string name="landing_cta">Let\'s get started</string>
 
     <string name="home_eyebrow">NAVIGATION</string>
     <string name="home_title">TSR App</string>
