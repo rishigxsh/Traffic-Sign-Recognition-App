@@ -14,7 +14,7 @@ import java.nio.FloatBuffer
 /**
  * Runs YOLOv8 ONNX inference on-device for traffic sign detection.
  *
- * Model and class list are loaded from: app/src/main/assets/US/
+ * Model and class list are loaded from: app/src/main/assets/
  *   - best.onnx          : exported YOLOv8 model
  *   - classes.json       : {"0": "class-name", "1": "class-name", ...}
  *
@@ -28,7 +28,7 @@ class OnnxInferenceEngine(context: Context) {
     private val ortEnv: OrtEnvironment = OrtEnvironment.getEnvironment()
     private val ortSession: OrtSession?
 
-    /** Class names loaded from assets/US/classes.json, index == key */
+    /** Class names loaded from assets/classes.json, index == key */
     val classNames: Array<String>
 
     /** Number of classes derived from classNames */
@@ -36,8 +36,8 @@ class OnnxInferenceEngine(context: Context) {
 
     companion object {
         private const val TAG = "OnnxInferenceEngine"
-        private const val MODEL_FILE    = "US/best.onnx"
-        private const val CLASSES_FILE  = "US/classes.json"
+        private const val MODEL_FILE    = "us_best.onnx"
+        private const val CLASSES_FILE  = "us_classes.json"
         private const val INPUT_SIZE    = 640
         private const val NUM_ANCHORS   = 8400
         private const val IOU_THRESHOLD = 0.45f
