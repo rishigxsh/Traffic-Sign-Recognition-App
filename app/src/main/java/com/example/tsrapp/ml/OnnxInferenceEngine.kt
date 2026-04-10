@@ -25,7 +25,7 @@ import java.nio.FloatBuffer
 class OnnxInferenceEngine(context: Context, region: ModelRegion = ModelRegion.US) {
 
     private val ortEnv: OrtEnvironment = OrtEnvironment.getEnvironment()
-    private val ortSession: OrtSession?
+    private var ortSession: OrtSession?
 
     /** Class names loaded from assets/classes.json, index == key */
     val classNames: Array<String>
@@ -89,9 +89,9 @@ class OnnxInferenceEngine(context: Context, region: ModelRegion = ModelRegion.US
         val shape     = longArrayOf(1, 3, INPUT_SIZE.toLong(), INPUT_SIZE.toLong())
 
         // 2. Run inference
-        val inputName  = session.inputNames.iterator().next()
+        val inputName   = session.inputNames.iterator().next()
         val inputTensor = OnnxTensor.createTensor(ortEnv, FloatBuffer.wrap(inputData), shape)
-        val results    = session.run(mapOf(inputName to inputTensor))
+        val results     = session.run(mapOf(inputName to inputTensor))
 
         // 3. Parse output: shape [1][4+numClasses][8400]
         @Suppress("UNCHECKED_CAST")
@@ -129,18 +129,32 @@ class OnnxInferenceEngine(context: Context, region: ModelRegion = ModelRegion.US
         // 4. Non-Maximum Suppression
         val kept = nms(detections)
 
-        // 5. Map to TrafficSign domain objects
-        return kept.map { det ->
+        // 5. Map to TrafficSign domain objects — clamp boxes to bitmap bounds,
+        //    enforce minimum size before clamping so coerce order never violates bounds
+        return kept.mapNotNull { det ->
             val id    = det[5].toInt()
             val label = classNames.getOrElse(id) { "Unknown ($id)" }
+
+            val bitmapW = bitmap.width.toFloat()
+            val bitmapH = bitmap.height.toFloat()
+
+            // Clamp all four edges to bitmap bounds
+            val left   = det[0].coerceIn(0f, bitmapW)
+            val top    = det[1].coerceIn(0f, bitmapH)
+            val right  = det[2].coerceIn(0f, bitmapW)
+            val bottom = det[3].coerceIn(0f, bitmapH)
+
+            // Skip detections that are completely outside or have zero area after clamping
+            if (right <= left || bottom <= top) return@mapNotNull null
+
             TrafficSign(
-                label      = label,
-                confidence = det[4],
+                label       = label,
+                confidence  = det[4],
                 boundingBox = TrafficSign.BoundingBox(
-                    left   = det[0].coerceAtLeast(0f),
-                    top    = det[1].coerceAtLeast(0f),
-                    right  = det[2].coerceAtMost(bitmap.width.toFloat()),
-                    bottom = det[3].coerceAtMost(bitmap.height.toFloat())
+                    left   = left,
+                    top    = top,
+                    right  = right,
+                    bottom = bottom
                 ),
                 isCritical = false
             )
@@ -216,6 +230,7 @@ class OnnxInferenceEngine(context: Context, region: ModelRegion = ModelRegion.US
 
     fun close() {
         ortSession?.close()
+        ortSession = null
         ortEnv.close()
     }
 }
