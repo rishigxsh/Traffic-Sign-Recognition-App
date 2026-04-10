@@ -120,6 +120,16 @@
                             android:checked="true" />
                     </LinearLayout>
 
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/testTtsButton"
+                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:text="@string/settings_tts_test_button"
+                        android:textAllCaps="false"
+                        android:textColor="@color/tsr_navy" />
+
                     <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/tsr_divider" />
 
                     <!-- Alerts -->
