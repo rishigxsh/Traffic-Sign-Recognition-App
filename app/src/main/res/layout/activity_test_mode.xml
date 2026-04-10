@@ -72,16 +72,48 @@
             app:backgroundTint="@color/tsr_navy"
             app:cornerRadius="16dp" />
 
-        <!-- Image preview (shown after picking) -->
-        <ImageView
-            android:id="@+id/previewImage"
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/pickVideoButton"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="12dp"
+            android:text="@string/test_mode_pick_video"
+            android:textAllCaps="false"
+            android:textSize="16sp"
+            android:fontFamily="sans-serif-black"
+            android:textColor="@color/tsr_navy"
+            app:cornerRadius="16dp"
+            app:strokeColor="@color/tsr_navy" />
+
+        <!-- Preview: static image and/or live video + detection overlay -->
+        <FrameLayout
+            android:id="@+id/previewContainer"
             android:layout_width="match_parent"
             android:layout_height="300dp"
             android:layout_marginTop="20dp"
-            android:scaleType="fitCenter"
-            android:background="@color/tsr_divider"
-            android:visibility="gone"
-            android:contentDescription="@string/test_upload_title" />
+            android:background="@color/tsr_divider">
+
+            <ImageView
+                android:id="@+id/previewImage"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="fitCenter"
+                android:visibility="gone"
+                android:contentDescription="@string/test_upload_title" />
+
+            <TextureView
+                android:id="@+id/videoTexture"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone" />
+
+            <com.example.tsrapp.ui.main.DetectionOverlayView
+                android:id="@+id/detectionOverlay"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone" />
+        </FrameLayout>
 
         <!-- Metrics card (always visible) -->
         <androidx.cardview.widget.CardView
