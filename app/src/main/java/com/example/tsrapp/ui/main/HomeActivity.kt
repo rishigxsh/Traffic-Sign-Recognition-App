@@ -3,7 +3,9 @@ package com.example.tsrapp.ui.main
 import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import com.example.tsrapp.R
 import com.example.tsrapp.databinding.ActivityHomeBinding
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 class HomeActivity : AppCompatActivity() {
 
@@ -15,7 +17,7 @@ class HomeActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         binding.startButton.setOnClickListener {
-            startActivity(Intent(this, MainActivity::class.java))
+            showLiveDetectionNote()
         }
         binding.testModeButton.setOnClickListener {
             startActivity(Intent(this, TestModeActivity::class.java))
@@ -23,5 +25,15 @@ class HomeActivity : AppCompatActivity() {
         binding.settingsButton.setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
+    }
+
+    private fun showLiveDetectionNote() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.live_scan_note_title)
+            .setMessage(getString(R.string.live_scan_note_message))
+            .setPositiveButton(R.string.live_scan_note_button) { _, _ ->
+                startActivity(Intent(this, MainActivity::class.java))
+            }
+            .show()
     }
 }

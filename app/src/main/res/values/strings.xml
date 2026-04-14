@@ -8,15 +8,22 @@
     <string name="landing_cta">Let\'s get started</string>
 
     <string name="home_eyebrow">NAVIGATION</string>
-    <string name="home_title">TSR App</string>
-    <string name="home_subtitle">Real-time traffic sign detection for safer driving.</string>
-    <string name="home_live_detection">📷  Live Detection</string>
-    <string name="home_live_detection_desc">Point camera at signs for real-time recognition</string>
-    <string name="home_test_mode">🧪  Testing &amp; Training</string>
-    <string name="home_test_mode_desc">Run model tests on sample datasets</string>
-    <string name="home_settings">⚙️  Settings</string>
-    <string name="home_settings_desc">Configure voice, overlays, region and model</string>
+    <string name="home_title">Detect road signs\nin real time!</string>
+    <string name="home_subtitle">Real-time recognition using your camera</string>
+    <string name="home_live_detection">Live Scan</string>
+    <string name="home_live_detection_desc">Start scanning using your camera</string>
+    <string name="home_test_mode">Model Testing</string>
+    <string name="home_test_mode_desc">Run tests on your datasets</string>
+    <string name="home_settings">Settings</string>
+    <string name="home_settings_desc">Adjust detection preferences</string>
     <string name="home_version">TSR App v1.0 · GTSRB · CNN Architecture</string>
+    <string name="live_scan_note_title">Before you start</string>
+    <string name="live_scan_note_message">Point your camera at a road sign
+Keep your phone steady
+Make sure the sign is clearly visible
+
+Always pay attention to traffic signs while driving</string>
+    <string name="live_scan_note_button">Start Scanning</string>
 
     <!-- Live detection -->
     <string name="live_eyebrow">CAMERA</string>
