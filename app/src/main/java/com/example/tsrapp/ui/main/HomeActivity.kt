@@ -19,6 +19,9 @@ class HomeActivity : AppCompatActivity() {
         binding.startButton.setOnClickListener {
             showLiveDetectionNote()
         }
+        binding.startScanActionButton.setOnClickListener {
+            showLiveDetectionNote()
+        }
         binding.testModeButton.setOnClickListener {
             startActivity(Intent(this, TestModeActivity::class.java))
         }
