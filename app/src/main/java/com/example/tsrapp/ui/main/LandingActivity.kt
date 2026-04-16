@@ -128,12 +128,15 @@ class LandingActivity : AppCompatActivity() {
         val displayCount = minOf(MAX_VISIBLE_SIGNS, signAssetNames.size, placements.size)
         val selectedAssets = signAssetNames.shuffled(random).take(displayCount)
 
-        repeat(displayCount) { index ->
+        // Randomize the pop order so they scatter visually instead of appearing sequentially
+        val popSequence = (0 until displayCount).shuffled(random)
+
+        popSequence.forEachIndexed { popStep, index ->
             val assetName = selectedAssets[index]
             val placement = placements[index]
             val signRunnable = Runnable { showAnimatedSign(assetName, placement) }
             signRunnables += signRunnable
-            handler.postDelayed(signRunnable, SIGN_START_DELAY_MS + index * SIGN_INTERVAL_MS)
+            handler.postDelayed(signRunnable, SIGN_START_DELAY_MS + popStep * SIGN_INTERVAL_MS)
         }
     }
 
@@ -325,15 +328,28 @@ class LandingActivity : AppCompatActivity() {
         signRunnables.forEach(handler::removeCallbacks)
         signRunnables.clear()
 
+        val animators = mutableListOf<Animator>(
+            ObjectAnimator.ofFloat(binding.splashContent, View.ALPHA, 1f, 0f),
+            ObjectAnimator.ofFloat(binding.splashContent, View.TRANSLATION_Y, 0f, -20f),
+            ObjectAnimator.ofFloat(binding.logoImage, View.SCALE_X, binding.logoImage.scaleX, 1.05f),
+            ObjectAnimator.ofFloat(binding.logoImage, View.SCALE_Y, binding.logoImage.scaleY, 1.05f)
+        )
+
+        val screenCenterY = binding.signsLayer.height / 2f
+        val flyDistance = dpToPx(100).toFloat()
+
+        activeSignViews.forEach { signView ->
+            val signCenterY = signView.y + (signView.height / 2f)
+            val isTopHalf = signCenterY < screenCenterY
+            val targetTranslationY = signView.translationY + if (isTopHalf) -flyDistance else flyDistance
+
+            animators += ObjectAnimator.ofFloat(signView, View.TRANSLATION_Y, signView.translationY, targetTranslationY)
+            animators += ObjectAnimator.ofFloat(signView, View.ALPHA, signView.alpha, 0f)
+        }
+
         val exitAnim = AnimatorSet().apply {
-            playTogether(
-                ObjectAnimator.ofFloat(binding.signsLayer, View.ALPHA, binding.signsLayer.alpha, 0f),
-                ObjectAnimator.ofFloat(binding.splashContent, View.ALPHA, 1f, 0f),
-                ObjectAnimator.ofFloat(binding.splashContent, View.TRANSLATION_Y, 0f, -20f),
-                ObjectAnimator.ofFloat(binding.logoImage, View.SCALE_X, binding.logoImage.scaleX, 1.05f),
-                ObjectAnimator.ofFloat(binding.logoImage, View.SCALE_Y, binding.logoImage.scaleY, 1.05f)
-            )
-            duration = 260L
+            playTogether(animators)
+            duration = 350L
             interpolator = AccelerateDecelerateInterpolator()
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) {

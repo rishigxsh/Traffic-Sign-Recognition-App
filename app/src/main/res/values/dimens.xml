@@ -1,0 +1,18 @@
+<resources>
+    <dimen name="tsr_space_xs">8dp</dimen>
+    <dimen name="tsr_space_sm">12dp</dimen>
+    <dimen name="tsr_space_md">16dp</dimen>
+    <dimen name="tsr_space_lg">20dp</dimen>
+    <dimen name="tsr_space_xl">24dp</dimen>
+    <dimen name="tsr_space_2xl">32dp</dimen>
+    <dimen name="tsr_space_3xl">40dp</dimen>
+
+    <dimen name="tsr_radius_sm">14dp</dimen>
+    <dimen name="tsr_radius_md">18dp</dimen>
+    <dimen name="tsr_radius_lg">22dp</dimen>
+    <dimen name="tsr_radius_xl">24dp</dimen>
+
+    <dimen name="tsr_header_icon">48dp</dimen>
+    <dimen name="tsr_action_button_height">56dp</dimen>
+    <dimen name="tsr_preview_height">320dp</dimen>
+</resources>
