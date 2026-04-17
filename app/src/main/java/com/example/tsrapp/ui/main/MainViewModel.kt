@@ -76,9 +76,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     override fun onCleared() {
         super.onCleared()
-        // Cancel any active inference BEFORE closing the engine
+        // Cancel any in-flight inference BEFORE closing the engine.
+        // Close on a background thread — sessionLock.write blocks until detect() finishes,
+        // so we must NOT do this on the main thread or it causes a lag spike.
         inferenceJob?.cancel()
-        repository?.close()
+        val repoToClose = repository ?: return
         repository = null
+        Thread(repoToClose::close, "onnx-close").start()
     }
 }

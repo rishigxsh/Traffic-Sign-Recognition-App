@@ -232,8 +232,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        stopCamera()
+        // Shut down the camera executor first so no new frames are submitted to the
+        // ViewModel after onCleared() begins closing the inference engine.
         cameraExecutor.shutdown()
+        stopCamera()
         ttsHelper.shutdown()
     }
 
