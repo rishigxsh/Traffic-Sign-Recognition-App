@@ -247,7 +247,7 @@ class TestModeActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        videoJob?.cancel() // Stop video processing if activity is destroyed
+        videoJob?.cancel()
         inferenceEngine.close()
     }
 }
