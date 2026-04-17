@@ -22,10 +22,15 @@ import java.nio.FloatBuffer
  *   Rows 0-3  → bounding box [cx, cy, w, h] in normalized 640x640 space
  *   Rows 4+   → class confidence scores
  */
-class OnnxInferenceEngine(context: Context, region: ModelRegion = ModelRegion.US) {
+class OnnxInferenceEngine(
+    context: Context,
+    region: ModelRegion = ModelRegion.US
+) {
 
     private val ortEnv: OrtEnvironment = OrtEnvironment.getEnvironment()
     private var ortSession: OrtSession?
+    private val cascadeClassifier: CascadeClassifier? =
+        if (region == ModelRegion.US) CascadeClassifier(context) else null
 
     /** Class names loaded from assets/classes.json, index == key */
     val classNames: Array<String>
@@ -132,8 +137,8 @@ class OnnxInferenceEngine(context: Context, region: ModelRegion = ModelRegion.US
         // 5. Map to TrafficSign domain objects — clamp boxes to bitmap bounds,
         //    enforce minimum size before clamping so coerce order never violates bounds
         return kept.mapNotNull { det ->
-            val id    = det[5].toInt()
-            val label = classNames.getOrElse(id) { "Unknown ($id)" }
+            val id             = det[5].toInt()
+            val detectorLabel  = classNames.getOrElse(id) { "Unknown ($id)" }
 
             val bitmapW = bitmap.width.toFloat()
             val bitmapH = bitmap.height.toFloat()
@@ -146,6 +151,10 @@ class OnnxInferenceEngine(context: Context, region: ModelRegion = ModelRegion.US
 
             // Skip detections that are completely outside or have zero area after clamping
             if (right <= left || bottom <= top) return@mapNotNull null
+
+            // Apply cascade classifier (US only) to refine the detector label
+            val box   = android.graphics.RectF(left, top, right, bottom)
+            val label = cascadeClassifier?.refine(bitmap, box, detectorLabel) ?: detectorLabel
 
             TrafficSign(
                 label       = label,
@@ -231,6 +240,7 @@ class OnnxInferenceEngine(context: Context, region: ModelRegion = ModelRegion.US
     fun close() {
         ortSession?.close()
         ortSession = null
+        cascadeClassifier?.close()
         ortEnv.close()
     }
 }
