@@ -1,7 +1,7 @@
 task: detect
 mode: train
 model: yolov8s.pt
-data: dataset\baseline_eu_v1\data.yaml
+data: dataset/baseline_eu_v1/data.yaml
 epochs: 150
 time: null
 patience: 30
@@ -12,7 +12,7 @@ save_period: 10
 cache: false
 device: '0'
 workers: 8
-project: c:\Projects\TrafficSignRecognition\model_training\experiments
+project: experiments
 name: baseline_eu_v1
 exist_ok: false
 pretrained: true
@@ -106,4 +106,4 @@ auto_augment: randaugment
 erasing: 0.4
 cfg: null
 tracker: botsort.yaml
-save_dir: C:\Projects\TrafficSignRecognition\model_training\experiments\baseline_eu_v1
+save_dir: experiments/baseline_eu_v1

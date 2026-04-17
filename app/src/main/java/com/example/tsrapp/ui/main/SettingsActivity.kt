@@ -1,6 +1,7 @@
 package com.example.tsrapp.ui.main
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.tsrapp.R
 import com.example.tsrapp.databinding.ActivitySettingsBinding
@@ -20,19 +21,31 @@ class SettingsActivity : AppCompatActivity() {
 
         binding.backButton.setOnClickListener { finish() }
 
-        setupToggles()
-        setupRegion()
-        setupModel()
-        setupThreshold()
-        setupTtsTest()
+        // Start non-essential UI logic after first frame to avoid ANR
+        binding.root.post {
+            setupToggles()
+            setupRegion()
+            setupModel()
+            setupThreshold()
+            setupTtsTest()
+        }
     }
 
     private fun setupToggles() {
         binding.ttsSwitch.isChecked = SettingsManager.isTtsEnabled(this)
         binding.showBoxesSwitch.isChecked = SettingsManager.isShowBoxes(this)
+        
+        val currentTheme = SettingsManager.getThemeMode(this)
+        binding.nightModeSwitch.isChecked = (currentTheme == SettingsManager.THEME_DARK)
 
         binding.ttsSwitch.setOnCheckedChangeListener { _, c -> SettingsManager.setTtsEnabled(this, c) }
         binding.showBoxesSwitch.setOnCheckedChangeListener { _, c -> SettingsManager.setShowBoxes(this, c) }
+        
+        binding.nightModeSwitch.setOnCheckedChangeListener { _, isChecked ->
+            val mode = if (isChecked) SettingsManager.THEME_DARK else SettingsManager.THEME_LIGHT
+            SettingsManager.setThemeMode(this, mode)
+            SettingsManager.applyTheme(mode)
+        }
     }
 
     private fun setupRegion() {
@@ -98,16 +111,29 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun setupTtsTest() {
-        // TTS test is triggered by the voice switch long-press or we can add a separate button if needed.
-        // For now, a long-press on the voice row speaks the test phrase.
-        binding.ttsSwitch.setOnLongClickListener {
-            if (SettingsManager.isTtsEnabled(this)) {
-                if (ttsHelper == null) ttsHelper = TextToSpeechHelper(this)
-                ttsHelper?.initialize { success ->
-                    if (success) ttsHelper?.speak(getString(R.string.settings_tts_test_phrase))
+        binding.testTtsButton.setOnClickListener {
+            if (!SettingsManager.isTtsEnabled(this)) {
+                Toast.makeText(this, R.string.settings_tts_turn_on_first, Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            
+            // Lazy initialize ttsHelper only when needed
+            if (ttsHelper == null) {
+                ttsHelper = TextToSpeechHelper(this)
+            }
+            
+            ttsHelper?.initialize { success ->
+                if (success) {
+                    ttsHelper?.speak(getString(R.string.settings_tts_test_phrase))
+                } else {
+                    Toast.makeText(
+                        this,
+                        "Text-to-speech failed to start. Install Google Text-to-Speech in Play Store, " +
+                            "then download a voice in Android Settings.",
+                        Toast.LENGTH_LONG,
+                    ).show()
                 }
             }
-            true
         }
     }
 
