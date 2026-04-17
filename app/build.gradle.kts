@@ -21,6 +21,8 @@ android {
             cmake {
                 cppFlags += "-std=c++17"
                 arguments += "-DANDROID_STL=c++_shared"
+                // Support 16 KB page sizes for Android 15+
+                arguments += "-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384"
             }
         }
     }
@@ -53,6 +55,13 @@ android {
 
     androidResources {
         noCompress += "onnx"
+    }
+
+    packaging {
+        jniLibs {
+            // Force 16 KB alignment for .so libraries during APK packaging
+            useLegacyPackaging = true
+        }
     }
 }
 

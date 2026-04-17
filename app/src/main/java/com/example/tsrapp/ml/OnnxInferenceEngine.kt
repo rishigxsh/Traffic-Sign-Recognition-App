@@ -10,6 +10,9 @@ import android.util.Log
 import com.example.tsrapp.data.model.TrafficSign
 import org.json.JSONObject
 import java.nio.FloatBuffer
+import java.util.concurrent.locks.ReentrantReadWriteLock
+import kotlin.concurrent.read
+import kotlin.concurrent.write
 
 /**
  * Runs YOLOv8 ONNX inference on-device for traffic sign detection.
@@ -31,6 +34,14 @@ class OnnxInferenceEngine(
     private var ortSession: OrtSession?
     private val cascadeClassifier: CascadeClassifier? =
         if (region == ModelRegion.US) CascadeClassifier(context) else null
+
+    /**
+     * Guards [ortSession] access so [close] cannot destroy the session while
+     * [detect] is executing native ONNX code. Multiple [detect] calls can run
+     * concurrently (read lock); [close] waits for all of them to finish first
+     * (write lock).
+     */
+    private val sessionLock = ReentrantReadWriteLock()
 
     /** Class names loaded from assets/classes.json, index == key */
     val classNames: Array<String>
@@ -86,88 +97,90 @@ class OnnxInferenceEngine(
      * Returns an empty list if the model has not been loaded yet.
      */
     fun detect(bitmap: Bitmap, confidenceThreshold: Float): List<TrafficSign> {
-        val session = ortSession ?: return emptyList()
-        if (numClasses == 0) return emptyList()
+        return sessionLock.read {
+            val session = ortSession ?: return emptyList()
+            if (numClasses == 0) return emptyList()
 
-        // 1. Preprocess: letterbox to 640x640, normalize, NCHW float array
-        val inputData = preprocess(bitmap)
-        val shape     = longArrayOf(1, 3, INPUT_SIZE.toLong(), INPUT_SIZE.toLong())
+            // 1. Preprocess: letterbox to 640x640, normalize, NCHW float array
+            val inputData = preprocess(bitmap)
+            val shape     = longArrayOf(1, 3, INPUT_SIZE.toLong(), INPUT_SIZE.toLong())
 
-        // 2. Run inference
-        val inputName   = session.inputNames.iterator().next()
-        val inputTensor = OnnxTensor.createTensor(ortEnv, FloatBuffer.wrap(inputData), shape)
-        val results     = session.run(mapOf(inputName to inputTensor))
+            // 2. Run inference
+            val inputName   = session.inputNames.iterator().next()
+            val inputTensor = OnnxTensor.createTensor(ortEnv, FloatBuffer.wrap(inputData), shape)
+            val results     = session.run(mapOf(inputName to inputTensor))
 
-        // 3. Parse output: shape [1][4+numClasses][8400]
-        @Suppress("UNCHECKED_CAST")
-        val output = (results[0].value as Array<Array<FloatArray>>)[0]
+            // 3. Parse output: shape [1][4+numClasses][8400]
+            @Suppress("UNCHECKED_CAST")
+            val output = (results[0].value as Array<Array<FloatArray>>)[0]
 
-        val detections = mutableListOf<FloatArray>() // [x1, y1, x2, y2, conf, classId]
+            val detections = mutableListOf<FloatArray>() // [x1, y1, x2, y2, conf, classId]
 
-        for (a in 0 until NUM_ANCHORS) {
-            val cx = output[0][a]
-            val cy = output[1][a]
-            val w  = output[2][a]
-            val h  = output[3][a]
+            for (a in 0 until NUM_ANCHORS) {
+                val cx = output[0][a]
+                val cy = output[1][a]
+                val w  = output[2][a]
+                val h  = output[3][a]
 
-            var maxScore = 0f
-            var classId  = -1
-            for (c in 0 until numClasses) {
-                val score = output[4 + c][a]
-                if (score > maxScore) {
-                    maxScore = score
-                    classId  = c
+                var maxScore = 0f
+                var classId  = -1
+                for (c in 0 until numClasses) {
+                    val score = output[4 + c][a]
+                    if (score > maxScore) {
+                        maxScore = score
+                        classId  = c
+                    }
                 }
+
+                if (maxScore < confidenceThreshold) continue
+
+                // Map from 640x640 letterbox space back to original bitmap coordinates
+                val x1 = (cx - w / 2f - letterboxPadX) / letterboxScale
+                val y1 = (cy - h / 2f - letterboxPadY) / letterboxScale
+                val x2 = (cx + w / 2f - letterboxPadX) / letterboxScale
+                val y2 = (cy + h / 2f - letterboxPadY) / letterboxScale
+
+                detections.add(floatArrayOf(x1, y1, x2, y2, maxScore, classId.toFloat()))
             }
 
-            if (maxScore < confidenceThreshold) continue
+            // 4. Non-Maximum Suppression
+            val kept = nms(detections)
 
-            // Map from 640x640 letterbox space back to original bitmap coordinates
-            val x1 = (cx - w / 2f - letterboxPadX) / letterboxScale
-            val y1 = (cy - h / 2f - letterboxPadY) / letterboxScale
-            val x2 = (cx + w / 2f - letterboxPadX) / letterboxScale
-            val y2 = (cy + h / 2f - letterboxPadY) / letterboxScale
+            // 5. Map to TrafficSign domain objects — clamp boxes to bitmap bounds,
+            //    enforce minimum size before clamping so coerce order never violates bounds
+            return kept.mapNotNull { det ->
+                val id             = det[5].toInt()
+                val detectorLabel  = classNames.getOrElse(id) { "Unknown ($id)" }
 
-            detections.add(floatArrayOf(x1, y1, x2, y2, maxScore, classId.toFloat()))
-        }
+                val bitmapW = bitmap.width.toFloat()
+                val bitmapH = bitmap.height.toFloat()
 
-        // 4. Non-Maximum Suppression
-        val kept = nms(detections)
+                // Clamp all four edges to bitmap bounds
+                val left   = det[0].coerceIn(0f, bitmapW)
+                val top    = det[1].coerceIn(0f, bitmapH)
+                val right  = det[2].coerceIn(0f, bitmapW)
+                val bottom = det[3].coerceIn(0f, bitmapH)
 
-        // 5. Map to TrafficSign domain objects — clamp boxes to bitmap bounds,
-        //    enforce minimum size before clamping so coerce order never violates bounds
-        return kept.mapNotNull { det ->
-            val id             = det[5].toInt()
-            val detectorLabel  = classNames.getOrElse(id) { "Unknown ($id)" }
+                // Skip detections that are completely outside or have zero area after clamping
+                if (right <= left || bottom <= top) return@mapNotNull null
 
-            val bitmapW = bitmap.width.toFloat()
-            val bitmapH = bitmap.height.toFloat()
+                // Apply cascade classifier (US only) to refine the detector label
+                val box   = android.graphics.RectF(left, top, right, bottom)
+                val label = cascadeClassifier?.refine(bitmap, box, detectorLabel) ?: detectorLabel
 
-            // Clamp all four edges to bitmap bounds
-            val left   = det[0].coerceIn(0f, bitmapW)
-            val top    = det[1].coerceIn(0f, bitmapH)
-            val right  = det[2].coerceIn(0f, bitmapW)
-            val bottom = det[3].coerceIn(0f, bitmapH)
-
-            // Skip detections that are completely outside or have zero area after clamping
-            if (right <= left || bottom <= top) return@mapNotNull null
-
-            // Apply cascade classifier (US only) to refine the detector label
-            val box   = android.graphics.RectF(left, top, right, bottom)
-            val label = cascadeClassifier?.refine(bitmap, box, detectorLabel) ?: detectorLabel
-
-            TrafficSign(
-                label       = label,
-                confidence  = det[4],
-                boundingBox = TrafficSign.BoundingBox(
-                    left   = left,
-                    top    = top,
-                    right  = right,
-                    bottom = bottom
-                ),
-                isCritical = false
-            )
-        }
+                TrafficSign(
+                    label       = label,
+                    confidence  = det[4],
+                    boundingBox = TrafficSign.BoundingBox(
+                        left   = left,
+                        top    = top,
+                        right  = right,
+                        bottom = bottom
+                    ),
+                    isCritical = false
+                )
+            }
+        } // end sessionLock.read
     }
 
     // Letterbox to 640x640, normalize [0,1], return NCHW float array.
@@ -238,8 +251,10 @@ class OnnxInferenceEngine(
     }
 
     fun close() {
-        ortSession?.close()
-        ortSession = null
+        sessionLock.write {
+            ortSession?.close()
+            ortSession = null
+        }
         cascadeClassifier?.close()
         ortEnv.close()
     }

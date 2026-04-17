@@ -9,6 +9,7 @@ import android.view.View
 import com.example.tsrapp.R
 import com.example.tsrapp.data.model.TrafficSign
 import com.example.tsrapp.util.SettingsManager
+import com.example.tsrapp.util.SignLabelToSpeech
 
 class DetectionOverlayView @JvmOverloads constructor(
     context: Context,
@@ -19,6 +20,9 @@ class DetectionOverlayView @JvmOverloads constructor(
     private var detections: List<TrafficSign> = emptyList()
     private val rectPool = mutableListOf<RectF>()
     private val textRectPool = mutableListOf<RectF>()
+
+    private var sourceWidth: Int = 0
+    private var sourceHeight: Int = 0
     
     private val criticalPaint = Paint().apply {
         color = resources.getColor(R.color.red, null)
@@ -60,6 +64,14 @@ class DetectionOverlayView @JvmOverloads constructor(
         detections = signs
         invalidate()
     }
+
+    /**
+     * Set the size of the source image/frame to scale detections correctly.
+     */
+    fun setSourceSize(width: Int, height: Int) {
+        this.sourceWidth = width
+        this.sourceHeight = height
+    }
     
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
@@ -73,13 +85,40 @@ class DetectionOverlayView @JvmOverloads constructor(
             return
         }
 
+        val viewWidth = width.toFloat()
+        val viewHeight = height.toFloat()
+
+        var scale = 1f
+        var offsetX = 0f
+        var offsetY = 0f
+
+        if (sourceWidth > 0 && sourceHeight > 0) {
+            val viewAspectRatio = viewWidth / viewHeight
+            val imageAspectRatio = sourceWidth.toFloat() / sourceHeight
+
+            if (imageAspectRatio > viewAspectRatio) {
+                // Image is relatively wider than the view area
+                scale = viewWidth / sourceWidth
+                offsetY = (viewHeight - sourceHeight * scale) / 2f
+            } else {
+                // Image is relatively taller than the view area (or same)
+                scale = viewHeight / sourceHeight
+                offsetX = (viewWidth - sourceWidth * scale) / 2f
+            }
+        }
+
         detections.forEachIndexed { index, sign ->
             if (sign.confidence < threshold) {
                 return@forEachIndexed
             }
             val box = sign.boundingBox
             val rect = rectPool[index]
-            rect.set(box.left, box.top, box.right, box.bottom)
+            rect.set(
+                box.left * scale + offsetX,
+                box.top * scale + offsetY,
+                box.right * scale + offsetX,
+                box.bottom * scale + offsetY
+            )
 
             // Draw bounding box
             if (showBoxes) {
@@ -87,10 +126,11 @@ class DetectionOverlayView @JvmOverloads constructor(
                 canvas.drawRect(rect, paint)
             }
 
+            val displayName = SignLabelToSpeech.toDisplayName(sign.label)
             // Build label text
             val labelText = when {
-                showLabels && showConfidence -> "${sign.label} (${(sign.confidence * 100).toInt()}%)"
-                showLabels -> sign.label
+                showLabels && showConfidence -> "$displayName (${(sign.confidence * 100).toInt()}%)"
+                showLabels -> displayName
                 showConfidence -> "${(sign.confidence * 100).toInt()}%"
                 else -> null
             }
@@ -99,26 +139,24 @@ class DetectionOverlayView @JvmOverloads constructor(
                 return@forEachIndexed
             }
 
-            val label = labelText
-            val textWidth = textPaint.measureText(label)
+            val textWidth = textPaint.measureText(labelText)
             val textHeight = textPaint.fontMetrics.let { it.descent - it.ascent }
-            
-            // Draw text background
+
+            // Draw text background (use scaled rect so labels align with boxes)
             val textRect = textRectPool[index]
             textRect.set(
-                box.left,
-                box.top - textHeight - 10,
-                box.left + textWidth + 20,
-                box.top
+                rect.left,
+                rect.top - textHeight - 10,
+                rect.left + textWidth + 20,
+                rect.top,
             )
             canvas.drawRect(textRect, textBackgroundPaint)
-            
-            // Draw text
+
             canvas.drawText(
-                label,
-                box.left + 10,
-                box.top - 10,
-                textPaint
+                labelText,
+                rect.left + 10,
+                rect.top - 10,
+                textPaint,
             )
         }
     }

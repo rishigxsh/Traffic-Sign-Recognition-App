@@ -24,6 +24,17 @@
     <color name="tsr_scan_yellow">#F4D03F</color>
     <color name="tsr_camera_bg">#1A2035</color>
 
+    <!-- New Home Page Colors -->
+    <color name="home_surface_bg">#F2F2F7</color>
+    <color name="home_primary_card">#1A1F36</color>
+    <color name="home_secondary_card">#FFFFFF</color>
+    <color name="home_icon_teal_bg">#E6F7F5</color>
+    <color name="home_icon_slate_bg">#F0F0F5</color>
+    <color name="home_badge_dot">#34C759</color>
+    <color name="home_badge_border">#E5E5EA</color>
+    <color name="home_text_muted">#8E8E93</color>
+    <color name="home_text_on_dark">#80FFFFFF</color>
+
     <!-- Legacy (kept for DetectionOverlayView) -->
     <color name="navy_500">#1E3A8A</color>
     <color name="navy_700">#1E40AF</color>

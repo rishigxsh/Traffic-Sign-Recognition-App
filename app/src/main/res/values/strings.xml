@@ -4,16 +4,28 @@
     <string name="camera_permission_denied">Camera permission denied. Please enable it in settings.</string>
 
     <!-- Home -->
+    <string name="landing_title">Traffic Sign Recognition App</string>
+    <string name="landing_cta">Let\'s get started</string>
+
     <string name="home_eyebrow">NAVIGATION</string>
-    <string name="home_title">TSR App</string>
-    <string name="home_subtitle">Real-time traffic sign detection for safer driving.</string>
-    <string name="home_live_detection">📷  Live Detection</string>
-    <string name="home_live_detection_desc">Point camera at signs for real-time recognition</string>
-    <string name="home_test_mode">🧪  Testing &amp; Training</string>
-    <string name="home_test_mode_desc">Run model tests on sample datasets</string>
-    <string name="home_settings">⚙️  Settings</string>
-    <string name="home_settings_desc">Configure voice, overlays, region and model</string>
+    <string name="home_title">Detect road signs\nin real time!</string>
+    <string name="home_subtitle">Scan, detect, and stay informed</string>
+    <string name="home_live_detection">Live Scan</string>
+    <string name="home_live_detection_desc">Start scanning using your camera</string>
+    <string name="home_test_mode">Model Testing</string>
+    <string name="home_test_mode_desc">Run tests on your datasets</string>
+    <string name="home_settings">Settings</string>
+    <string name="home_settings_desc">Adjust detection preferences</string>
+    <string name="home_more_options">More Options</string>
+    <string name="home_start_scanning">Start Scanning</string>
     <string name="home_version">TSR App v1.0 · GTSRB · CNN Architecture</string>
+    <string name="live_scan_note_title">Before you start</string>
+    <string name="live_scan_note_message">Point your camera at any road sign
+Keep your phone steady
+Make sure the sign is clearly visible
+
+Always pay attention to traffic signs while driving</string>
+    <string name="live_scan_note_button">Start Scanning</string>
 
     <!-- Live detection -->
     <string name="live_eyebrow">CAMERA</string>
@@ -50,7 +62,7 @@
 
     <!-- Test / Training -->
     <string name="test_eyebrow">MODE</string>
-    <string name="test_title">Testing &amp; Training</string>
+    <string name="test_title">Model Testing</string>
     <string name="test_tab_test">Test</string>
     <string name="test_tab_train">Train</string>
     <string name="test_tab_metrics">Metrics</string>
@@ -72,19 +84,30 @@
     <string name="metrics_matrix_title">Confusion Matrix</string>
     <string name="test_mode_title">Testing &amp; Training</string>
     <string name="test_mode_subtitle">Run your model on sample images or gallery photos.</string>
-    <string name="test_subtitle_attached">sample images or gallery photos.</string>
+    <string name="test_subtitle_attached">Run image and video checks using your current detection pipeline.</string>
     <string name="test_mode_pick_image">Pick image from gallery</string>
     <string name="test_mode_pick_video">Pick video from gallery</string>
+    <string name="test_mode_video_running">Processing video…</string>
+    <string name="test_mode_video_no_frames">Could not read frames from this video.</string>
+    <string name="test_mode_live_video_hint">Playing video — signs appear on screen as they are detected. Inference may lag slightly on long clips.</string>
+    <string name="test_mode_live_status">● Live detection</string>
+    <string name="test_mode_video_ended">Playback finished.</string>
     <string name="test_mode_results_title">Detections</string>
-    <string name="test_mode_no_results">No detections yet. Pick an image to get started.</string>
+    <string name="test_mode_no_results">No detections yet. Pick an image or video to get started.</string>
     <string name="test_mode_accuracy_default">Accuracy: &#8212;</string>
     <string name="test_mode_precision_default">Precision: &#8212;</string>
     <string name="test_mode_recall_default">Recall: &#8212;</string>
     <string name="test_mode_fps_default">FPS: &#8212;</string>
     <string name="test_mode_timing_default">Avg. inference: &#8212; ms</string>
+    <string name="test_media_section">Choose media</string>
+    <string name="test_preview_section">Preview</string>
+    <string name="test_preview_hint">Static images and videos appear here with the same detection overlays used in live scan.</string>
+    <string name="test_preview_empty">Pick an image or video to preview detections.</string>
+    <string name="test_summary_section">Detection summary</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
+    <string name="settings_subtitle">Control voice feedback, thresholds, region, and model behavior.</string>
     <string name="settings_eyebrow">PREFERENCES</string>
     <string name="settings_detection_header">DETECTION</string>
     <string name="settings_voice_label">Voice Feedback</string>
@@ -105,7 +128,7 @@
     <string name="settings_model_header">MODEL</string>
     <string name="settings_about_version">TSR App v1.0</string>
     <string name="settings_about_subtitle">Traffic Sign Recognition</string>
-    <string name="settings_about_detail">GTSRB Dataset · CNN Architecture · Offline-first</string>
+    <string name="settings_about_detail">On-device detection · Voice alerts · Offline-ready</string>
     <string name="settings_theme">Theme</string>
     <string name="settings_theme_system">System</string>
     <string name="settings_theme_light">Light</string>
@@ -113,6 +136,7 @@
     <string name="settings_tts_title">Voice (Text-to-Speech)</string>
     <string name="settings_tts_enable">Enable voice feedback</string>
     <string name="settings_tts_test_button">Test voice</string>
+    <string name="settings_tts_turn_on_first">Turn on “Voice feedback” above, then try again.</string>
     <string name="settings_tts_test_phrase">Speed limit 30.</string>
     <string name="settings_overlays_title">Detection overlays</string>
     <string name="settings_show_boxes">Show bounding boxes</string>
@@ -132,7 +156,11 @@
 
     <!-- Shared -->
     <string name="back_to_home">Back to home</string>
+    <string name="mute_voice_alerts">Mute voice alerts</string>
+    <string name="stop_live_detection">Stop live detection</string>
     <string name="dark_mode">Dark mode</string>
+    <string name="gallery_pick_image">Pick from gallery</string>
+    <string name="gallery_image_desc">Selected image for detection</string>
     <string name="start_detection">Start detection</string>
 
     <!-- Test mode runtime strings -->
