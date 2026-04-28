@@ -1,35 +1,142 @@
-# Traffic Sign Recognition — Model Training Summary
+# Traffic Sign Recognition — Model Training
 
-## Dataset
-
-The combined training dataset was built from two sources: **Mapillary Traffic Sign Dataset v2** (MTSD) and **LISA** (sourced via Roboflow). Mapillary provided geographically diverse, worldwide street-level imagery with detailed annotations across 401 classes. LISA provided US-focused dashcam footage with 40 classes. The two datasets were merged into a unified YOLO-format dataset with a shared class taxonomy, with LISA labels manually mapped to their nearest Mapillary equivalent.
-
-### Dataset Filtering (Mapillary)
-
-Several filters were applied to Mapillary before training to improve data quality:
-
-- **Panoramic images removed** — Mapillary contains 360° panoramic images with heavy fisheye distortion that don't resemble dashcam footage. These were excluded entirely using the `ispano` flag in each annotation file.
-- **Occluded annotations removed** — annotations marked `occluded`, `ambiguous`, `out-of-frame`, or `dummy` in the properties block were dropped.
-- **Small annotations removed** — annotations where the bounding box was smaller than a minimum pixel threshold in the original image were dropped. For the 640px model this threshold was 32px; for the 1280px model it was lowered to 20px to retain more far-distance examples.
-- **Mapillary test split redirected** — Mapillary withholds test split labels (competition format), so the test split was redirected to val. A proper held-out test set was carved from 10% of Mapillary's train split using a fixed random seed.
-
-### Split Handling (LISA)
-
-LISA contains temporal sequences — consecutive frames of the same scene taken 1-2 seconds apart. The Roboflow export was verified to have split these sequences correctly so no sequence spans across train/val/test, preventing data leakage.
-
-### Class Selection
-
-401 Mapillary classes were manually reviewed using a contact sheet tool (grid of example crops per class). Each class was marked as:
-
-- **Keep** — US sign included in the final class list
-- **Buffer** — US sign present but not a priority class (excluded from baseline, used as `other` in cascade classifiers)
-- **Skip** — non-US or irrelevant
-
-After review, merging of low-count variant classes, and dropping classes below viable annotation counts, the final combined dataset contains:
+This directory contains all notebooks, configs, and assets used to train the traffic sign detection and classification models. The system uses a two-tier pipeline: a **YOLOv8 object detector** locates signs in a frame, then a **MobileNetV3 cascade classifier** refines the prediction for visually ambiguous sign categories.
 
 ---
 
-## Final Dataset Statistics (1280px version)
+## Table of Contents
+
+1. [System Architecture Overview](#system-architecture-overview)
+2. [Datasets](#datasets)
+3. [Dataset Filtering and Preprocessing](#dataset-filtering-and-preprocessing)
+4. [Class Selection](#class-selection)
+5. [Data Augmentation](#data-augmentation)
+6. [YOLO Detectors](#yolo-detectors)
+7. [MobileNet Cascade Classifiers](#mobilenet-cascade-classifiers)
+8. [Two-Tier Cascade Architecture](#two-tier-cascade-architecture)
+9. [Training Results](#training-results)
+10. [Speed Performance](#speed-performance)
+11. [Model Export](#model-export)
+
+---
+
+## System Architecture Overview
+
+**For newcomers to ML:** Think of the pipeline as a two-step process. The first step (the detector) acts like a pair of eyes scanning the road — it draws boxes around anything that looks like a traffic sign and makes an initial guess about what each sign is. The second step (the classifier) acts like a second opinion — for categories where the detector often gets confused (like telling apart a 25 mph vs 35 mph sign), a dedicated expert model gets a close-up look at the cropped sign and makes a more accurate decision.
+
+```
+Input Frame
+    │
+    ▼
+┌─────────────────────────────┐
+│  YOLOv8s Detector           │  Locates signs and assigns an initial label
+│  (US or EU variant)         │
+└────────────┬────────────────┘
+             │  detected sign crops
+             ▼
+    ┌────────────────────┐
+    │  Routing Logic     │  Is this a speed limit? A warning? A regulatory sign?
+    └──────┬─────────────┘
+           │
+    ┌──────┴──────────────────────────────────────────────┐
+    │              │                                       │
+    ▼              ▼                                       ▼
+Speed Limit    Warning                             Regulatory
+Classifier     Classifier                          Classifier
+(8 classes)    (22 classes)                        (19 classes)
+    │              │                                       │
+    └──────┬───────┘                                       │
+           └───────────────────────────────────────────────┘
+                             │
+                     Final Label Output
+```
+
+If the classifier is not confident enough (confidence < 0.30), or predicts `other` (a sign that doesn't belong to the taxonomy), the pipeline falls back to the detector's original label.
+
+---
+
+## Datasets
+
+Training data comes from two sources combined into a single unified dataset.
+
+### Mapillary Traffic Sign Dataset v2 (MTSD)
+
+Mapillary is a large-scale dataset of real street-level photographs collected worldwide by contributors using dashcams and smartphones. Version 2 contains images annotated across **401 traffic sign classes** from many countries, giving the model exposure to highly varied real-world lighting, weather, and road conditions.
+
+- **Source:** Facebook / Mapillary (requires dataset access agreement)
+- **Coverage:** Worldwide, with heavy US and European content
+- **Annotation format:** JSON per image with bounding boxes and class labels
+- **Key characteristic:** Very diverse imagery but also includes noisy panoramic shots, heavily occluded signs, and low-visibility examples that require filtering before use
+
+### LISA (Laboratory for Intelligent and Safe Automobiles)
+
+LISA is a US-specific dataset captured from dashcam footage, focused on driving scenarios relevant to American roads. It was sourced via the Roboflow platform in YOLO format.
+
+- **Coverage:** US signs only, ~40 classes
+- **Key characteristic:** Temporal sequences — consecutive frames of the same scene recorded 1-2 seconds apart
+- **Split handling:** The Roboflow export was verified to keep each temporal sequence entirely within one split (train, val, or test). This is important to prevent **data leakage**, where the model effectively "sees" a test image during training because a nearly identical frame appeared in the training set.
+
+LISA class labels were manually mapped to their nearest Mapillary equivalent so both datasets share a single unified taxonomy.
+
+---
+
+## Dataset Filtering and Preprocessing
+
+Raw Mapillary data contains a lot of images that would hurt model quality if included as-is. Several filters were applied before training.
+
+### Panoramic Image Removal
+
+**What it is:** Mapillary contains 360° panoramic images captured with fisheye lenses. These images have heavy geometric distortion — straight lines appear curved, and the perspective is completely unlike a forward-facing dashcam.
+
+**Why it matters:** Training on fisheye-distorted images teaches the model patterns that will never appear in real dashcam footage, hurting performance without any benefit.
+
+**How it was done:** Each Mapillary annotation file includes an `ispano` flag. Any image with `ispano=true` was excluded entirely.
+
+### Occluded and Invalid Annotation Removal
+
+Mapillary annotators mark individual bounding boxes with quality flags. Annotations marked `occluded`, `ambiguous`, `out-of-frame`, or `dummy` were dropped from training. Keeping heavily occluded or ambiguous labels teaches the model to recognize partial or unclear signs — adding noise rather than signal.
+
+### Small Annotation Filtering
+
+**What it is:** Annotations where the bounding box is smaller than a minimum pixel threshold in the original image were removed.
+
+**Why it matters:** Extremely small annotations — a sign that is only a handful of pixels — are often unrecognizable even to a human. Including them trains the model on blurry, indistinct patches that don't resemble real sign appearances.
+
+**Thresholds used:**
+| Model variant | Min annotation size |
+|---------------|---------------------|
+| 640px model | 32px |
+| 1280px model | 20px (lower to retain more far-distance examples) |
+
+### Split Reassignment
+
+Mapillary withholds ground-truth labels for its official test split (used for a leaderboard competition). To work around this, the original test split was redirected to validation. A proper held-out test set was then carved out of 10% of Mapillary's training split using a fixed random seed, ensuring reproducibility.
+
+---
+
+## Class Selection
+
+Mapillary's 401 classes include signs from every country in the world. For the US model, only classes representing American signs were needed. To select them, a **contact sheet review tool** was used — a grid of example image crops automatically generated for each class, allowing every class to be visually inspected and categorized:
+
+| Label      | Meaning                                                                                                      |
+| ---------- | ------------------------------------------------------------------------------------------------------------ |
+| **Keep**   | US sign that belongs in the final taxonomy                                                                   |
+| **Buffer** | US sign present but not a priority; excluded from detector training, used as an `other` class in classifiers |
+| **Skip**   | Non-US or irrelevant sign (European, Asian, construction-specific, etc.)                                     |
+
+After the review, similar variant classes (e.g., the same sign design with minor regional variations labeled `g2`, `g3`, `g4`) were merged into a single canonical label to consolidate training data.
+
+### Sign Categories in the Final Taxonomy
+
+The final US taxonomy covers three main sign families:
+
+- **Regulatory signs** — signs that give legal instructions: stop, yield, speed limits, no-turn signs, one-way, no-entry, lane control, and others
+- **Warning signs** — diamond-shaped signs alerting drivers to upcoming hazards: pedestrian crossings, school zones, curves, railroad crossings, merging lanes, traffic signals ahead, slippery roads, and others
+- **Complementary signs** — supplemental signs that provide directional guidance: chevrons, keep-left/right panels, obstacle delineators
+
+A separate EU class list was compiled through the same contact-sheet review process, stored in `mapillary_class_review_eu.csv`.
+
+### Final Dataset Statistics (1280px version)
 
 | Split | Images |
 | ----- | ------ |
@@ -39,6 +146,9 @@ After review, merging of low-count variant classes, and dropping classes below v
 
 **Total classes: 55 — Total annotations: 18,122**
 **Mean per class: 329.5 — Median per class: 192.0**
+
+<details>
+<summary>Per-class annotation counts</summary>
 
 | Class                                    | Total | Mapillary | LISA  |
 | ---------------------------------------- | ----- | --------- | ----- |
@@ -98,85 +208,135 @@ After review, merging of low-count variant classes, and dropping classes below v
 | warning--turn-left--g1                   | 78    | 78        | 0     |
 | warning--turn-right--g1                  | 126   | 126       | 0     |
 
----
-
-## Model Architecture
-
-All detector models use **YOLOv8s** (11.1M parameters, 28.6 GFLOPs) from the Ultralytics library, pretrained on COCO. YOLOv8s was chosen over the nano variant for better small-object detection while remaining exportable to TFLite for Android deployment. Cascade classifiers use **MobileNetV3-Small** pretrained on ImageNet.
-
-### Detector Training Configuration
-
-| Setting      | Value                                                          | Notes                                                     |
-| ------------ | -------------------------------------------------------------- | --------------------------------------------------------- |
-| Optimizer    | SGD                                                            | Better detection accuracy than Adam                       |
-| lr0          | 0.01                                                           | Cosine decay schedule                                     |
-| Augmentation | HSV jitter, mosaic=1.0, mixup=0.1, copy_paste=0.3, erasing=0.4 |                                                           |
-| `fliplr`     | 0.0                                                            | Disabled — prevents directional signs from being mirrored |
-| `flipud`     | 0.0                                                            | Disabled                                                  |
-| Epochs       | 150                                                            | Patience=30 early stopping                                |
+</details>
 
 ---
 
-## US Detector Training Runs
+## Data Augmentation
 
-### Baseline — YOLOv8s @ 640px
+**For newcomers to ML:** Augmentation means artificially creating variations of your training images — changing the brightness, rotating slightly, cutting pieces out — so the model sees a wider variety of conditions than what the original dataset contains. This makes it generalize better to real-world inputs it has never seen before.
 
-- **Min annotation size:** 32px — **Batch:** 16 — **Stopped at:** epoch 91
+The following augmentations were applied during YOLO training:
 
-| mAP50 | mAP50-95 | Precision | Recall |
-| ----- | -------- | --------- | ------ |
-| 0.682 | 0.532    | 0.716     | 0.613  |
-
-### Experiment 1 — YOLOv8s @ 1280px
-
-Motivated by poor far-distance detection in the baseline. Dataset rebuilt with a lower annotation size threshold (20px) to retain more far-distance examples.
-
-- **Min annotation size:** 20px — **Batch:** 8 — **Dataset:** `combined_dataset_1280`
-
-| mAP50 | mAP50-95 | Precision | Recall |
-| ----- | -------- | --------- | ------ |
-| 0.881 | 0.706    | 0.830     | 0.825  |
-
-Significant improvement across all metrics. Qualitative testing on dashcam footage confirmed improved detection of signs at greater distances.
-
-### Deployed Model — baseline_v3
-
-The model deployed to Android is `baseline_v3`, trained at 640px on `combined_dataset_tiled`. Chosen over the 1280px variant to meet the real-time inference requirement on mid-range Android hardware (target: 15+ FPS).
-
-| mAP50 | mAP50-95 | Precision | Recall |
-| ----- | -------- | --------- | ------ |
-| 0.646 | —        | —         | —      |
+| Augmentation     | Setting                             | Purpose                                                                                                        |
+| ---------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| HSV color jitter | `hsv_h=0.015, hsv_s=0.7, hsv_v=0.4` | Simulates different lighting, weather, and camera color profiles                                               |
+| Scale jitter     | `scale=0.7`                         | Simulates signs at different distances                                                                         |
+| Rotation         | `degrees=5.0`                       | Simulates slight camera tilt                                                                                   |
+| **Mosaic**       | `mosaic=1.0`                        | Combines 4 images into one tile, forcing the model to detect small objects in cluttered scenes                 |
+| **Mixup**        | `mixup=0.1`                         | Blends two images together at a low weight, acting as a regularizer                                            |
+| **Copy-paste**   | `copy_paste=0.3`                    | Copies annotated sign instances from one image and pastes them into another, increasing sign density variety   |
+| Random erasing   | `erasing=0.4`                       | Randomly blacks out rectangular patches, simulating partial occlusion                                          |
+| Horizontal flip  | **disabled** (`fliplr=0.0`)         | Deliberately turned off — flipping a one-way or turn sign reverses its meaning, which would corrupt the labels |
+| Vertical flip    | **disabled** (`flipud=0.0`)         | Upside-down signs do not appear in real dashcam footage                                                        |
 
 ---
 
-## US Cascade Classifiers
+## YOLO Detectors
 
-The detector alone struggles to distinguish visually similar signs within the same category — most notably speed limit variants (25/35/45 mph) and warning signs with similar diamond shapes. A cascade classifier stage was added to refine detector predictions for three superclasses.
+**For newcomers to ML:** YOLO (You Only Look Once) is a family of object detection models known for being fast enough to process video in real time. The detector scans an entire image in a single forward pass and outputs bounding boxes with class labels. "YOLOv8s" refers to the "small" size variant from the 8th generation of the architecture — a good balance between speed and accuracy for mobile deployment.
 
-### Architecture
+### Model Choice
 
-**MobileNetV3-Small** — 2.5M parameters, ~4ms per crop on PC GPU. Designed for fast mobile inference and TFLite deployment on Android.
+All detectors use **YOLOv8s** (11.1M parameters, 28.6 GFLOPs) from the Ultralytics library, pretrained on COCO. The small variant was chosen over the nano variant because it performs meaningfully better on small-object detection (distant signs), while still being exportable to ONNX for Android deployment.
 
-For each detection the detector label is used to route to the appropriate classifier:
+### Training Configuration
 
-```
-"maximum-speed-limit" in label   →  speed_limit classifier
-label starts with "warning--"    →  warning classifier
-label starts with "regulatory--" →  regulatory classifier
-other                             →  use detector label directly
-```
+| Setting       | Value                   | Notes                                                    |
+| ------------- | ----------------------- | -------------------------------------------------------- |
+| Optimizer     | SGD                     | Empirically better detection accuracy than Adam for YOLO |
+| Learning rate | 0.01                    | Cosine annealing decay schedule                          |
+| Epochs        | 150                     | With patience=30 early stopping                          |
+| Batch size    | 16 (640px) / 8 (1280px) |                                                          |
+| Augmentation  | See table above         |                                                          |
 
-If classifier confidence is below the threshold (0.30), or the prediction is `other`, the pipeline falls back to the detector label. The `other` class is populated from buffer-labeled classes in the review CSVs — signs that resemble kept classes but are not in the taxonomy.
+### US Detector
 
-### Classifier Datasets
+Two training runs were conducted for the US model:
 
-Crops extracted from Mapillary and LISA with 20% bounding box padding. Class merges from the dataset builder are applied so variant labels (g2, g3) resolve to their canonical class folder.
+**Baseline — YOLOv8s @ 640px**
 
-| Classifier  | Classes | Train crops | Val crops | Test crops |
-| ----------- | ------- | ----------- | --------- | ---------- |
-| regulatory  | 19      | 7,298       | 1,163     | 854        |
-| speed_limit | 8       | 2,419       | 364       | 320        |
-| warning     | 22      | 9,209       | 1,379     | 983        |
+- Min annotation size: 32px — Batch: 16 — Stopped at epoch 91
+
+| mAP50  | mAP50-95 | Precision | Recall |
+| ------ | -------- | --------- | ------ |
+| 0.6919 | 0.5242   | 0.7310    | 0.6213 |
+
+**Experiment — YOLOv8s @ 1280px**
+
+Motivated by poor far-distance detection in the baseline. The dataset was rebuilt with a lower annotation size threshold (20px) to retain more far-distance examples.
+
+- Min annotation size: 20px — Batch: 8 — Stopped at epoch 51
+
+| mAP50  | mAP50-95 | Precision | Recall |
+| ------ | -------- | --------- | ------ |
+| 0.8823 | 0.6928   | 0.8128    | 0.8115 |
+
+Significant improvement across all metrics. Qualitative testing on dashcam footage confirmed notably better detection of signs at greater distances. However, the higher resolution increases inference time substantially on mobile hardware.
+
+**Experiment — YOLOv8s @ 640px (Tiled)**
+
+An additional experiment tiled full-resolution frames into overlapping 640×640 patches during dataset construction, recovering some of the resolution benefit of the 1280px model without the per-frame inference cost. Despite achieving the best detection metrics, this approach was not used for deployment — the tiling preprocessing makes real-time inference too slow on mid-range Android hardware.
+
+- Min annotation size: 32px — Batch: 16 — Stopped at epoch 90
+
+| mAP50  | mAP50-95 | Precision | Recall |
+| ------ | -------- | --------- | ------ |
+| 0.9404 | 0.7547   | 0.8978    | 0.8978 |
+
+**The baseline 640px model was selected for Android deployment** as the best balance between detection quality and real-time inference performance (target: 15+ FPS on mid-range hardware).
+
+### EU Detector
+
+A separate detector was trained for European signs using Mapillary only — no LISA equivalent exists for European signs. The EU class list was selected through the same manual contact-sheet review process used for US signs, stored in `mapillary_class_review_eu.csv`.
+
+- **Dataset:** `baseline_eu_v1` — Mapillary only, no LISA
+- **Model:** YOLOv8s @ 640px, same training configuration as US models
+- **Cascade classifiers:** Not yet implemented — planned as future work pending confusion matrix analysis
+
+Stopped at epoch 121.
+
+| mAP50  | mAP50-95 | Precision | Recall |
+| ------ | -------- | --------- | ------ |
+| 0.4811 | 0.3559   | 0.6312    | 0.4229 |
+
+---
+
+## MobileNet Cascade Classifiers
+
+**For newcomers to ML:** The detector is trained to recognize all sign classes from the same image in one shot, which means it uses a relatively coarse representation. Within tight visual categories — all speed limit signs look like white circles with numbers; all warning signs are yellow diamonds — the detector sometimes confuses one variant for another. A classifier, by contrast, receives only the cropped sign region and focuses exclusively on distinguishing within that category. Because the input is smaller and the task is narrower, a lightweight model can do this very quickly.
+
+### Model Choice
+
+All classifiers use **MobileNetV3-Small** pretrained on ImageNet. This architecture is specifically designed for fast inference on mobile CPUs, with only 2.5M parameters. It runs at approximately 4ms per crop on a PC GPU, well within the real-time budget.
+
+### Crop Extraction
+
+For each annotated sign, the bounding box is expanded by **20% padding** on all sides and saved as a standalone crop image. This padding ensures the classifier sees a small amount of surrounding context (road surface, sky, neighboring signs) which can help with ambiguous cases. Crops smaller than 20px were discarded.
+
+Crops are organized into three **superclass** directories, one per classifier:
+
+| Classifier    | Classes | Train crops | Val crops | Test crops |
+| ------------- | ------- | ----------- | --------- | ---------- |
+| `speed_limit` | 8       | 2,419       | 364       | 320        |
+| `warning`     | 22      | 9,209       | 1,379     | 983        |
+| `regulatory`  | 19      | 7,298       | 1,163     | 854        |
+
+Each superclass also includes an **`other`** class, populated from signs that were marked as `buffer` during the class review — signs that visually resemble kept classes but are not part of the taxonomy. This prevents similar-looking unlabeled signs from being misclassified as a known class. For example, a deer crossing sign shares the same diamond shape and figure silhouette as a pedestrian crossing sign and could otherwise be incorrectly predicted as one. When the classifier predicts `other`, the detection is dropped entirely rather than being assigned a wrong label.
+
+### Classifier Training Configuration
+
+| Setting      | Value                                     |
+| ------------ | ----------------------------------------- |
+| Architecture | MobileNetV3-Small (ImageNet pretrained)   |
+| Final layer  | Replaced: 1280 → num_classes              |
+| Loss         | CrossEntropyLoss with label smoothing 0.1 |
+| Optimizer    | AdamW, lr=3e-4, weight_decay=1e-4         |
+| LR schedule  | CosineAnnealingLR, T_max=30               |
+| Epochs       | 30                                        |
+| Batch size   | 64                                        |
+
+**Label smoothing** (0.1) slightly softens the one-hot targets during training, discouraging the model from being overconfident on ambiguous training examples — useful here since some sign classes are visually very similar.
 
 ### Classifier Results (test set, crop-level accuracy)
 
@@ -186,37 +346,135 @@ Crops extracted from Mapillary and LISA with 20% bounding box padding. Class mer
 | speed_limit | 88.1%    |
 | warning     | 98.5%    |
 
-### End-to-End Pipeline Results (test set, baseline_v3 detector)
+The speed limit classifier has the lowest accuracy because speed limit signs are visually nearly identical — the only distinguishing feature is the number, and some numbers (e.g., 35 vs 45) look similar at low resolution or when partially blurred by motion.
+
+---
+
+## Two-Tier Cascade Architecture
+
+**For newcomers to ML:** This section walks through the full decision process a single detected sign goes through, from raw detector output to final label.
+
+### Routing Logic
+
+After the detector fires on a frame, each detection is routed to the appropriate classifier based on its initial predicted label:
+
+```
+Detector prediction
+        │
+        ├─ contains "maximum-speed-limit"  →  speed_limit classifier
+        │
+        ├─ starts with "warning--"         →  warning classifier
+        │
+        ├─ starts with "regulatory--"      →  regulatory classifier
+        │   (excluding speed limits, handled above)
+        │
+        └─ other                           →  use detector label directly
+```
+
+### Confidence Fallback
+
+The classifier always outputs a class and a confidence score. Two conditions cause the pipeline to **ignore the classifier result** and use the detector's original label instead:
+
+1. **Low confidence:** classifier confidence < 0.30
+2. **`other` prediction:** the classifier determined the sign does not belong to any known class
+
+This fallback is important — without it, a misrouted detection (e.g., a European sign appearing in a US-model feed) would be forced into a wrong label.
+
+### End-to-End Pipeline Results (test set, `baseline_v3` detector)
 
 | Stage              | Overall Accuracy |
 | ------------------ | ---------------- |
 | Detector only      | 64.6%            |
 | Detector + cascade | 68.9% (+4.3%)    |
 
-The 4.3% overall gain understates the classifier's impact — it is diluted by complementary sign classes which have no classifier. For classes that route through a classifier the improvement is typically 10–30%. Notable gains: `warning--turn-left` +27%, `warning--divided-highway-ends` +33%, `regulatory--stop` +13%, `regulatory--maximum-speed-limit-25` +14%. One known regression: `regulatory--maximum-speed-limit-45` -30%, caused by limited training examples for that class.
+The 4.3% overall gain understates the classifier's real impact. The gain is diluted by the complementary sign classes (chevrons, delineators, etc.) which bypass all classifiers entirely. For classes that route through a classifier the improvement is typically **10–30%**.
+
+Notable gains on specific classes:
+
+- `warning--turn-left` **+27%**
+- `warning--divided-highway-ends` **+33%**
+- `regulatory--stop` **+13%**
+- `regulatory--maximum-speed-limit-25` **+14%**
+
+Known regression: `regulatory--maximum-speed-limit-45` **−30%**, caused by insufficient training examples for that class in the speed limit classifier. This is a known issue and a target for data collection.
 
 ---
 
-## EU Detector
+## Training Results
 
-A separate detector was trained for EU signs using Mapillary only (no LISA equivalent exists for European signs). The EU class list was selected through the same manual contact-sheet review process used for US signs, stored in `mapillary_class_review_eu.csv`.
+### US Detector Summary
 
-- **Dataset:** `baseline_eu_v1` — Mapillary only, no LISA
-- **Model:** YOLOv8s @ 640px, same training config as US models
-- **No cascade classifiers** — planned as future work pending confusion matrix analysis
+| Run                      | Input size | mAP50  | mAP50-95 | Precision | Recall | Status        |
+| ------------------------ | ---------- | ------ | -------- | --------- | ------ | ------------- |
+| baseline (640px)         | 640        | 0.6919 | 0.5242   | 0.7310    | 0.6213 | **Deployed**  |
+| experiment (1280px)      | 1280       | 0.8823 | 0.6928   | 0.8128    | 0.8115 | Research only |
+| experiment (640px tiled) | 640        | 0.9404 | 0.7547   | 0.8978    | 0.8978 | Research only |
 
-EU detector results will be populated after training completes.
+### EU Detector Summary
+
+The EU detector (`baseline_eu_v1`) was trained on Mapillary-only data at 640px with the same configuration as the US baseline.
+
+| Run              | Input size | mAP50  | mAP50-95 | Precision | Recall | Status       |
+| ---------------- | ---------- | ------ | -------- | --------- | ------ | ------------ |
+| baseline (640px) | 640        | 0.4811 | 0.3559   | 0.6312    | 0.4229 | **Deployed** |
+
+### Cascade Classifier Summary
+
+| Classifier  | Classes | Test accuracy |
+| ----------- | ------- | ------------- |
+| speed_limit | 8       | 88.1%         |
+| warning     | 22      | 98.5%         |
+| regulatory  | 19      | 98.1%         |
 
 ---
 
-## Exported Models
+## Speed Performance
 
-All models are exported to ONNX for Android deployment. Classifier models produce a paired `.onnx` + `.onnx.data` file (weights stored externally by the ONNX exporter). Both files must be bundled together — the `.onnx` file alone will fail to load without the matching `.onnx.data` present in the same directory.
+Timing measured on PC using ONNX Runtime (GPU). Android FPS estimates are approximated based on benchmarks and assume a GPU session — actual performance depends on hardware and driver support.
 
-| File                                         | Purpose                        |
-| -------------------------------------------- | ------------------------------ |
-| `detector_us.onnx`                           | US YOLOv8s detector            |
-| `detector_eu.onnx`                           | EU YOLOv8s detector            |
-| `speed_limit_classifier.onnx` + `.onnx.data` | Speed limit cascade classifier |
-| `warning_classifier.onnx` + `.onnx.data`     | Warning cascade classifier     |
-| `regulatory_classifier.onnx` + `.onnx.data`  | Regulatory cascade classifier  |
+| Model                | Preprocess | Inference | Postprocess | Total   | FPS (PC) | Android FPS (High-End) | Android FPS (Mid-Range) |
+| -------------------- | ---------- | --------- | ----------- | ------- | -------- | ---------------------- | ----------------------- |
+| YOLOv8s @ 640px      | 0.7 ms     | 2.0 ms    | 0.7 ms      | 3.4 ms  | 295      | 30–50                  | 15–30                   |
+| YOLOv8s @ 1280px     | 3.1 ms     | 7.4 ms    | 0.7 ms      | 11.2 ms | 90       | 10–18                  | 5–10                    |
+| YOLOv8s Tiled (SAHI) | —          | —         | —           | 52 ms   | 20       | 4–8                    | 2–4                     |
+
+The tiled model has no per-stage breakdown because SAHI wraps multiple inference passes (one per tile) plus merge logic into a single call. The 52 ms figure covers the full tiling pipeline end-to-end.
+
+Only the **640px model** meets the 15+ FPS target on mid-range Android hardware. The 1280px model is viable on high-end devices only, and the tiled model is below real-time threshold on all Android hardware tested.
+
+---
+
+## Model Export
+
+All models are exported to **ONNX** (Open Neural Network Exchange) format for Android deployment.
+
+### Detector Export
+
+```
+yolov8s best.pt  →  detector_us.onnx   (42.7 MB, FP32, static input shape)
+                 →  detector_eu.onnx
+```
+
+Export settings: `half=False` (FP32 for compatibility), `dynamic=False` (fixed shapes for Android ONNX Runtime), `simplify=True` (graph optimization pass).
+
+### Classifier Export
+
+Each classifier produces two files that **must be kept together**:
+
+- `classifier.onnx` — model graph
+- `classifier.onnx.data` — weights stored as an external file by the ONNX exporter
+
+If only the `.onnx` file is present without its `.onnx.data` sibling, the model will fail to load at runtime.
+
+A `classifier_config.json` is generated alongside the model files. It encodes the class list for each classifier and the routing rules used to assign detections to the correct classifier at inference time.
+
+### Android Asset Files
+
+| File                                         | Purpose                            |
+| -------------------------------------------- | ---------------------------------- |
+| `detector_us.onnx`                           | US YOLOv8s detector                |
+| `detector_eu.onnx`                           | EU YOLOv8s detector                |
+| `speed_limit_classifier.onnx` + `.onnx.data` | Speed limit cascade classifier     |
+| `warning_classifier.onnx` + `.onnx.data`     | Warning sign cascade classifier    |
+| `regulatory_classifier.onnx` + `.onnx.data`  | Regulatory sign cascade classifier |
+| `classifier_config.json`                     | Routing rules and class lists      |
