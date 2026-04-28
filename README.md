@@ -46,6 +46,7 @@ Built with Kotlin + CameraX + ONNX Runtime for Android.
 | `app/src/main/assets/model.onnx` | **Place exported model here** (not in repo — too large) |
 
 **To run the app:**
+
 1. Open this folder in Android Studio
 2. Let Gradle sync complete
 3. Install NDK if prompted: SDK Manager → SDK Tools → NDK (Side by side)
@@ -54,16 +55,56 @@ Built with Kotlin + CameraX + ONNX Runtime for Android.
 
 ---
 
-## Backend (ML Pipeline)
+## ML Pipeline
 
-Training code lives in `model_training/`. The pipeline uses Mapillary Traffic Sign Dataset v2 + LISA (Roboflow), merged into a unified YOLO-format dataset with 55 US traffic sign classes.
+The app uses a two-tier pipeline: a **YOLOv8s detector** locates signs in the camera frame, then lightweight **MobileNetV3 cascade classifiers** refine predictions for visually similar sign categories (e.g. distinguishing 25 mph from 35 mph). Separate models are trained for US and EU signs, using the Mapillary Traffic Sign Dataset v2 combined with LISA traffic sign dataset. All models are exported to ONNX for on-device inference.
 
-Three trained models are available (weights shared via Google Drive, not in repo):
-- **ATSD_Roboflow_640_Yolov8n** — 51 classes, 12 MB ONNX, drop-in compatible
-- **Map+LISA_640_Yolo8s** — 51 classes, 43 MB ONNX, higher accuracy
-- **MAP+LISA_1280_Yolov8s** — 51 classes, best metrics (88% mAP50), requires 1280 input
+For full details on training methodology, datasets, model selection, and performance benchmarks, see [model_training/README.md](model_training/README.md).
 
-The exported `model.onnx` file should be placed in `app/src/main/assets/`.
+### Running the ML Code
+
+All training and data preparation code lives in `model_training/` as Jupyter notebooks. Notebooks are run directly in VS Code using the [Jupyter extension](https://marketplace.visualstudio.com/items?itemName=ms-toolsai.jupyter). To set up the environment:
+
+**Prerequisites**
+
+- Python 3.10+
+- VS Code with the [Jupyter extension](https://marketplace.visualstudio.com/items?itemName=ms-toolsai.jupyter) installed
+- A CUDA-capable GPU is strongly recommended for training.
+
+**Install PyTorch**
+
+PyTorch is not included in `requirements.txt` because the correct build depends on your CUDA version. Use the [PyTorch installation selector](https://pytorch.org/get-started/locally/) to generate the right install command for your system, then run it before the next step.
+
+For CPU
+
+```bash
+pip3 install torch torchvision
+```
+
+For GPU
+
+```bash
+pip3 install torch torchvision --index-url https://download.pytorch.org/whl/{cuda_version}
+```
+
+**Install remaining dependencies**
+
+```bash
+pip install -r model_training/requirements.txt
+```
+
+**Notebook overview**
+
+| Notebook                         | Purpose                                                  |
+| -------------------------------- | -------------------------------------------------------- |
+| `download_datasets.ipynb`        | Download and extract Mapillary MTSD v2 and LISA datasets |
+| `mapillary_classes_review.ipynb` | Review and label Mapillary classes for the US taxonomy   |
+| `baseline_yolo.ipynb`            | Train the US YOLOv8s detector                            |
+| `baseline_eu_yolo.ipynb`         | Train the EU YOLOv8s detector                            |
+| `cascade_classifier.ipynb`       | Train the MobileNetV3 cascade classifiers                |
+| `test_videos.ipynb`              | Run inference on video files and review results          |
+
+Run `download_datasets.ipynb` first to populate the dataset before running any training notebooks. **Mapillary is extremely large — expect to need ~100 GB of free disk space.**
 
 ---
 
@@ -81,12 +122,12 @@ DetectionOverlayView draws boxes + TTS speaks sign name
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Android UI | Kotlin, CameraX, MVVM, LiveData |
-| On-device inference | ONNX Runtime for Android 1.16.3 |
-| Native utilities | C++ (Tensor class, Logger, JNI) |
-| Model | YOLOv8 (up to 55 US traffic sign classes), ONNX format |
+| Layer               | Technology                                             |
+| ------------------- | ------------------------------------------------------ |
+| Android UI          | Kotlin, CameraX, MVVM, LiveData                        |
+| On-device inference | ONNX Runtime for Android 1.16.3                        |
+| Native utilities    | C++ (Tensor class, Logger, JNI)                        |
+| Model               | YOLOv8 (up to 55 US traffic sign classes), ONNX format |
 
 ---
 
