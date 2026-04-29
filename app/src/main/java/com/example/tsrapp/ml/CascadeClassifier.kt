@@ -7,6 +7,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.RectF
+import android.os.Build
 import android.util.Log
 import org.json.JSONObject
 import java.nio.FloatBuffer
@@ -93,8 +94,18 @@ class CascadeClassifier(context: Context) {
     private fun loadSession(context: Context, modelFile: String): OrtSession? {
         return try {
             val bytes = context.assets.open(modelFile).readBytes()
-            val opts  = OrtSession.SessionOptions().apply { setIntraOpNumThreads(4) }
-            val s     = ortEnv.createSession(bytes, opts)
+            val opts  = OrtSession.SessionOptions().apply {
+                setIntraOpNumThreads(4)
+                if (OnnxInferenceEngine.supportsNnapi()) {
+                    try {
+                        addNnapi()
+                        Log.i(TAG, "NNAPI execution provider enabled for $modelFile")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "NNAPI unavailable for $modelFile, using CPU: ${e.message}")
+                    }
+                }
+            }
+            val s = ortEnv.createSession(bytes, opts)
             Log.i(TAG, "Loaded classifier: $modelFile")
             s
         } catch (e: Exception) {
