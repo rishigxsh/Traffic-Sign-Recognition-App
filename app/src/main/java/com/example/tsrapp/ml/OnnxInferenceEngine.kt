@@ -6,6 +6,7 @@ import ai.onnxruntime.OrtSession
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.os.Build
 import android.util.Log
 import com.example.tsrapp.data.model.TrafficSign
 import org.json.JSONObject
@@ -54,6 +55,12 @@ class OnnxInferenceEngine(
         private const val INPUT_SIZE    = 640
         private const val NUM_ANCHORS   = 8400
         private const val IOU_THRESHOLD = 0.45f
+
+        // NNAPI requires API 27+ and a native ARM device.
+        // GPU support is disabled for emulator
+        fun supportsNnapi(): Boolean =
+            Build.VERSION.SDK_INT >= 27 &&
+                (Build.SUPPORTED_ABIS.firstOrNull()?.startsWith("arm") == true)
     }
 
     private val modelFile   = region.modelFile
@@ -76,13 +83,18 @@ class OnnxInferenceEngine(
         ortSession = try {
             val modelBytes = context.assets.open(modelFile).readBytes()
             val opts = OrtSession.SessionOptions().apply {
-                // NNAPI is disabled: it causes a SIGFPE (FPE_INTDIV) crash during session
-                // creation on x86_64 emulators. On a real ARM device you can re-enable it
-                // by calling addNnapi() here, but it is not needed for correctness.
                 setIntraOpNumThreads(4)
+                if (supportsNnapi()) {
+                    try {
+                        addNnapi()
+                        Log.i(TAG, "NNAPI execution provider enabled for $modelFile")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "NNAPI unavailable, falling back to CPU: ${e.message}")
+                    }
+                }
             }
             val session = ortEnv.createSession(modelBytes, opts)
-            Log.i(TAG, "ONNX session created from $modelFile (CPU, region=${region.displayName})")
+            Log.i(TAG, "ONNX session created from $modelFile (region=${region.displayName})")
             session
         } catch (e: Exception) {
             Log.e(TAG, "Failed to load $modelFile", e)
