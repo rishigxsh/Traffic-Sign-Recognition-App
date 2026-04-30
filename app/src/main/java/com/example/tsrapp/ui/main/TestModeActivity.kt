@@ -155,6 +155,10 @@ class TestModeActivity : AppCompatActivity() {
                 val engine = inferenceEngine ?: withContext(Dispatchers.Default) {
                     OnnxInferenceEngine(this@TestModeActivity).also { inferenceEngine = it }
                 }
+                if (!engine.isModelLoaded) {
+                    binding.resultsText.text = "Model failed to load. Check logcat for details."
+                    return@launch
+                }
                 val signs = withContext(Dispatchers.Default) {
                     engine.detect(bitmap, threshold)
                 }
@@ -202,6 +206,11 @@ class TestModeActivity : AppCompatActivity() {
             val threshold = SettingsManager.getConfidenceThreshold(this@TestModeActivity)
             val engine = inferenceEngine ?: withContext(Dispatchers.Default) {
                 OnnxInferenceEngine(this@TestModeActivity).also { inferenceEngine = it }
+            }
+            if (!engine.isModelLoaded) {
+                binding.resultsText.text = "Model failed to load. Check logcat for details."
+                setTestInputsEnabled(true)
+                return@launch
             }
 
             withContext(Dispatchers.Main) {

@@ -20,6 +20,8 @@ class TSRRepository(context: Context) {
      * @param bitmap The camera frame as a Bitmap
      * @return List of detected traffic signs with bounding boxes and labels
      */
+    val isModelLoaded: Boolean get() = engine.isModelLoaded
+
     suspend fun detectSignsInFrame(bitmap: Bitmap): List<TrafficSign> {
         if (!engine.isModelLoaded) return emptyList()
         val threshold = SettingsManager.getConfidenceThreshold(appContext)

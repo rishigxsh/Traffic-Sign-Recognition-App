@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign Position Tool</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    display: flex;
+    background: #1a1a2e;
+    color: #fff;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* Phone preview */
+  .phone-frame {
+    position: relative;
+    width: 390px;
+    height: 844px;
+    background: #0a1628;
+    border: 3px solid #444;
+    border-radius: 40px;
+    overflow: hidden;
+    margin: 20px 30px;
+    flex-shrink: 0;
+  }
+
+  /* Center content (logo + title) */
+  .center-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .logo-circle {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    border: 4px solid #c8a832;
+    background: rgba(200, 168, 50, 0.15);
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: #c8a832;
+  }
+  .title-text {
+    font-size: 22px;
+    font-weight: 900;
+    color: #fff;
+    letter-spacing: 0.5px;
+    line-height: 1.3;
+  }
+
+  /* Exclusion zone visualizer */
+  .exclusion-zone {
+    position: absolute;
+    border: 2px dashed rgba(255, 80, 80, 0.4);
+    background: rgba(255, 80, 80, 0.05);
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  /* Draggable signs */
+  .sign {
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    cursor: grab;
+    z-index: 10;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: box-shadow 0.15s;
+  }
+  .sign:active { cursor: grabbing; }
+  .sign:hover { box-shadow: 0 0 0 3px rgba(100, 200, 255, 0.6); border-radius: 4px; }
+  .sign img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+  }
+  .sign .sign-label {
+    position: absolute;
+    bottom: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 9px;
+    color: #8af;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .sign:hover .sign-label { opacity: 1; }
+
+  /* Grid overlay */
+  .grid-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .grid-line-h, .grid-line-v {
+    position: absolute;
+    background: rgba(255,255,255,0.06);
+  }
+  .grid-line-h { left: 0; right: 0; height: 1px; }
+  .grid-line-v { top: 0; bottom: 0; width: 1px; }
+  .grid-label {
+    position: absolute;
+    font-size: 8px;
+    color: rgba(255,255,255,0.25);
+    pointer-events: none;
+  }
+
+  /* Side panel */
+  .panel {
+    flex: 1;
+    padding: 20px 24px;
+    overflow-y: auto;
+    max-height: 100vh;
+  }
+  .panel h1 {
+    font-size: 20px;
+    margin-bottom: 4px;
+    color: #8af;
+  }
+  .panel .subtitle {
+    font-size: 13px;
+    color: #888;
+    margin-bottom: 16px;
+  }
+  .panel h2 {
+    font-size: 15px;
+    margin: 16px 0 8px;
+    color: #aaa;
+    border-bottom: 1px solid #333;
+    padding-bottom: 4px;
+  }
+
+  /* Position list */
+  .pos-list {
+    font-size: 12px;
+    line-height: 1.8;
+  }
+  .pos-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 2px 0;
+    border-bottom: 1px solid #222;
+    cursor: pointer;
+  }
+  .pos-item:hover { background: rgba(255,255,255,0.05); }
+  .pos-item .idx {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: bold;
+    flex-shrink: 0;
+  }
+  .pos-item .coords {
+    font-family: 'Menlo', 'Consolas', monospace;
+    color: #6d8;
+  }
+  .pos-item .name {
+    color: #999;
+    font-size: 11px;
+  }
+
+  /* Code output */
+  .code-output {
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 12px;
+    font-family: 'Menlo', 'Consolas', monospace;
+    font-size: 11px;
+    line-height: 1.6;
+    color: #6d8;
+    white-space: pre;
+    overflow-x: auto;
+    margin-top: 8px;
+    position: relative;
+  }
+  .copy-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: #333;
+    border: 1px solid #555;
+    color: #fff;
+    padding: 4px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 11px;
+  }
+  .copy-btn:hover { background: #555; }
+
+  /* Controls */
+  .controls {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .controls button {
+    background: #2a3a5a;
+    border: 1px solid #4a6a9a;
+    color: #fff;
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .controls button:hover { background: #3a5a8a; }
+
+  .toggle-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+    font-size: 12px;
+    color: #aaa;
+  }
+  .toggle-row label { cursor: pointer; display: flex; align-items: center; gap: 4px; }
+</style>
+</head>
+<body>
+
+<div class="phone-frame" id="phone">
+  <div class="grid-overlay" id="grid"></div>
+  <div class="exclusion-zone" id="exclusion"></div>
+  <div class="center-content">
+    <div class="logo-circle">LOGO</div>
+    <div class="title-text">Traffic Sign<br>Recognition App</div>
+  </div>
+</div>
+
+<div class="panel">
+  <h1>🚦 Sign Position Tool</h1>
+  <p class="subtitle">Drag signs on the phone preview. Coordinates update live.</p>
+
+  <div class="controls">
+    <button onclick="resetPositions()">↺ Reset All</button>
+    <button onclick="addSign()">+ Add Sign</button>
+    <button onclick="removeLastSign()">− Remove Last</button>
+  </div>
+
+  <div class="toggle-row">
+    <label><input type="checkbox" id="showGrid" checked onchange="toggleGrid()"> Grid</label>
+    <label><input type="checkbox" id="showExclusion" checked onchange="toggleExclusion()"> Exclusion Zone</label>
+    <label><input type="checkbox" id="showRotation" checked> Rotation</label>
+  </div>
+
+  <h2>Positions (drag to adjust)</h2>
+  <div class="pos-list" id="posList"></div>
+
+  <h2>Kotlin Code — copy into LandingActivity.kt</h2>
+  <div class="code-output" id="codeOutput">
+    <button class="copy-btn" onclick="copyCode()">Copy</button>
+  </div>
+</div>
+
+<script>
+const phone = document.getElementById('phone');
+const PHONE_W = 390;
+const PHONE_H = 844;
+
+// Sign colors for identification
+const COLORS = [
+  '#e74c3c','#e67e22','#f1c40f','#2ecc71','#1abc9c','#3498db',
+  '#9b59b6','#e91e63','#00bcd4','#ff5722','#795548','#607d8b'
+];
+
+// Current positions (matching what's in LandingActivity.kt)
+let signs = [
+  { x: 0.08, y: 0.02, rot: -8  },
+  { x: 0.48, y: 0.06, rot: 10  },
+  { x: 0.88, y: 0.03, rot: -5  },
+  { x: 0.05, y: 0.14, rot: 12  },
+  { x: 0.92, y: 0.18, rot: -11 },
+  { x: 0.04, y: 0.65, rot: -7  },
+  { x: 0.93, y: 0.70, rot: 14  },
+  { x: 0.05, y: 0.77, rot: 8   },
+  { x: 0.92, y: 0.82, rot: -13 },
+  { x: 0.15, y: 0.87, rot: 6   },
+  { x: 0.75, y: 0.90, rot: 11  },
+  { x: 0.45, y: 0.94, rot: -4  },
+];
+
+const SIGN_SIZE = 50; // matches the 50dp in code (scaled for preview)
+
+// --- Grid ---
+function drawGrid() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  for (let p = 10; p < 100; p += 10) {
+    // Horizontal
+    const h = document.createElement('div');
+    h.className = 'grid-line-h';
+    h.style.top = `${p}%`;
+    grid.appendChild(h);
+    const hl = document.createElement('div');
+    hl.className = 'grid-label';
+    hl.style.top = `${p}%`;
+    hl.style.right = '2px';
+    hl.textContent = `${p}%`;
+    grid.appendChild(hl);
+    // Vertical
+    const v = document.createElement('div');
+    v.className = 'grid-line-v';
+    v.style.left = `${p}%`;
+    grid.appendChild(v);
+    const vl = document.createElement('div');
+    vl.className = 'grid-label';
+    vl.style.left = `${p}%`;
+    vl.style.bottom = '2px';
+    vl.textContent = `${p}%`;
+    grid.appendChild(vl);
+  }
+}
+drawGrid();
+
+// --- Exclusion zone ---
+function drawExclusion() {
+  const ex = document.getElementById('exclusion');
+  // Approximate center content area
+  ex.style.left = '14%';
+  ex.style.right = '14%';
+  ex.style.top = '28%';
+  ex.style.bottom = '38%';
+}
+drawExclusion();
+
+function toggleGrid() {
+  document.getElementById('grid').style.display =
+    document.getElementById('showGrid').checked ? '' : 'none';
+}
+function toggleExclusion() {
+  document.getElementById('exclusion').style.display =
+    document.getElementById('showExclusion').checked ? '' : 'none';
+}
+
+// --- Sign rendering ---
+function renderSigns() {
+  // Remove existing sign elements
+  document.querySelectorAll('.sign').forEach(el => el.remove());
+
+  signs.forEach((s, i) => {
+    const el = document.createElement('div');
+    el.className = 'sign';
+    el.dataset.index = i;
+    el.style.width = SIGN_SIZE + 'px';
+    el.style.height = SIGN_SIZE + 'px';
+    el.style.left = (s.x * PHONE_W - SIGN_SIZE / 2) + 'px';
+    el.style.top = (s.y * PHONE_H - SIGN_SIZE / 2) + 'px';
+    el.style.background = COLORS[i % COLORS.length] + '33';
+    el.style.border = `2px solid ${COLORS[i % COLORS.length]}`;
+    el.style.borderRadius = '6px';
+
+    if (document.getElementById('showRotation').checked) {
+      el.style.transform = `rotate(${s.rot}deg)`;
+    }
+
+    const numLabel = document.createElement('span');
+    numLabel.style.cssText = 'font-weight:bold;font-size:16px;color:' + COLORS[i % COLORS.length];
+    numLabel.textContent = i + 1;
+    el.appendChild(numLabel);
+
+    const label = document.createElement('div');
+    label.className = 'sign-label';
+    label.textContent = `(${s.x.toFixed(2)}, ${s.y.toFixed(2)})`;
+    el.appendChild(label);
+
+    makeDraggable(el, i);
+    phone.appendChild(el);
+  });
+
+  updatePanel();
+}
+
+// --- Drag logic ---
+function makeDraggable(el, index) {
+  let startX, startY, origLeft, origTop;
+
+  el.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    startX = e.clientX;
+    startY = e.clientY;
+    origLeft = parseFloat(el.style.left);
+    origTop = parseFloat(el.style.top);
+    el.style.zIndex = 100;
+
+    function onMove(e) {
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      let newLeft = origLeft + dx;
+      let newTop = origTop + dy;
+
+      // Clamp to phone bounds
+      newLeft = Math.max(-SIGN_SIZE/2, Math.min(PHONE_W - SIGN_SIZE/2, newLeft));
+      newTop = Math.max(-SIGN_SIZE/2, Math.min(PHONE_H - SIGN_SIZE/2, newTop));
+
+      el.style.left = newLeft + 'px';
+      el.style.top = newTop + 'px';
+
+      // Update data
+      signs[index].x = parseFloat(((newLeft + SIGN_SIZE / 2) / PHONE_W).toFixed(3));
+      signs[index].y = parseFloat(((newTop + SIGN_SIZE / 2) / PHONE_H).toFixed(3));
+
+      // Update label
+      el.querySelector('.sign-label').textContent =
+        `(${signs[index].x.toFixed(2)}, ${signs[index].y.toFixed(2)})`;
+
+      updatePanel();
+    }
+
+    function onUp() {
+      el.style.zIndex = 10;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    }
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+}
+
+// --- Panel update ---
+function updatePanel() {
+  const list = document.getElementById('posList');
+  list.innerHTML = '';
+  signs.forEach((s, i) => {
+    const item = document.createElement('div');
+    item.className = 'pos-item';
+    item.innerHTML = `
+      <span class="idx" style="background:${COLORS[i % COLORS.length]}30;color:${COLORS[i % COLORS.length]}">${i+1}</span>
+      <span class="coords">(${s.x.toFixed(2)}, ${s.y.toFixed(2)}, ${s.rot}°)</span>
+    `;
+    item.addEventListener('click', () => {
+      // Highlight on phone
+      const signEl = document.querySelector(`.sign[data-index="${i}"]`);
+      if (signEl) {
+        signEl.style.boxShadow = `0 0 0 4px ${COLORS[i % COLORS.length]}`;
+        setTimeout(() => { signEl.style.boxShadow = ''; }, 800);
+      }
+    });
+    list.appendChild(item);
+  });
+
+  // Generate Kotlin code
+  const code = document.getElementById('codeOutput');
+  let kotlin = 'val positions = listOf(\n';
+  signs.forEach((s, i) => {
+    const xStr = s.x.toFixed(2) + 'f';
+    const yStr = s.y.toFixed(2) + 'f';
+    const rStr = (s.rot >= 0 ? ' ' : '') + s.rot.toFixed(0) + 'f';
+    const comma = i < signs.length - 1 ? ',' : '';
+    kotlin += `    Triple(${xStr.padStart(5)}, ${yStr.padStart(5)}, ${rStr.padStart(5)})${comma}\n`;
+  });
+  kotlin += ')';
+
+  // Keep copy button, update text
+  code.innerHTML = `<button class="copy-btn" onclick="copyCode()">Copy</button>${kotlin}`;
+}
+
+// --- Actions ---
+function resetPositions() {
+  signs = [
+    { x: 0.08, y: 0.02, rot: -8  },
+    { x: 0.48, y: 0.06, rot: 10  },
+    { x: 0.88, y: 0.03, rot: -5  },
+    { x: 0.05, y: 0.14, rot: 12  },
+    { x: 0.92, y: 0.18, rot: -11 },
+    { x: 0.04, y: 0.65, rot: -7  },
+    { x: 0.93, y: 0.70, rot: 14  },
+    { x: 0.05, y: 0.77, rot: 8   },
+    { x: 0.92, y: 0.82, rot: -13 },
+    { x: 0.15, y: 0.87, rot: 6   },
+    { x: 0.75, y: 0.90, rot: 11  },
+    { x: 0.45, y: 0.94, rot: -4  },
+  ];
+  renderSigns();
+}
+
+function addSign() {
+  if (signs.length >= 18) return;
+  signs.push({ x: 0.50, y: 0.50, rot: 0 });
+  renderSigns();
+}
+
+function removeLastSign() {
+  if (signs.length <= 1) return;
+  signs.pop();
+  renderSigns();
+}
+
+function copyCode() {
+  let kotlin = 'val positions = listOf(\n';
+  signs.forEach((s, i) => {
+    const xStr = s.x.toFixed(2) + 'f';
+    const yStr = s.y.toFixed(2) + 'f';
+    const rStr = (s.rot >= 0 ? ' ' : '') + s.rot.toFixed(0) + 'f';
+    const comma = i < signs.length - 1 ? ',' : '';
+    kotlin += `    Triple(${xStr.padStart(5)}, ${yStr.padStart(5)}, ${rStr.padStart(5)})${comma}\n`;
+  });
+  kotlin += ')';
+  navigator.clipboard.writeText(kotlin).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+  });
+}
+
+// Initial render
+renderSigns();
+</script>
+</body>
+</html>

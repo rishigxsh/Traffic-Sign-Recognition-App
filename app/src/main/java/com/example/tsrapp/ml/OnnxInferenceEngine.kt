@@ -6,8 +6,10 @@ import ai.onnxruntime.OrtSession
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.os.Build
 import android.util.Log
 import com.example.tsrapp.data.model.TrafficSign
+import com.example.tsrapp.util.SignLabelToSpeech
 import org.json.JSONObject
 import java.nio.FloatBuffer
 
@@ -43,6 +45,13 @@ class OnnxInferenceEngine(context: Context) {
         private const val IOU_THRESHOLD = 0.45f
     }
 
+    private data class PreprocessedFrame(
+        val inputData: FloatArray,
+        val padX: Int,
+        val padY: Int,
+        val scale: Float,
+    )
+
     init {
         // --- Load class names ---
         classNames = try {
@@ -57,20 +66,38 @@ class OnnxInferenceEngine(context: Context) {
         Log.i(TAG, "Loaded $numClasses classes from $CLASSES_FILE")
 
         // --- Load ONNX model ---
-        ortSession = try {
-            val modelBytes = context.assets.open(MODEL_FILE).readBytes()
-            val opts = OrtSession.SessionOptions().apply {
-                // NNAPI is disabled: it causes a SIGFPE (FPE_INTDIV) crash during session
-                // creation on x86_64 emulators. On a real ARM device you can re-enable it
-                // by calling addNnapi() here, but it is not needed for correctness.
-                setIntraOpNumThreads(4)
-            }
-            val session = ortEnv.createSession(modelBytes, opts)
-            Log.i(TAG, "ONNX session created from $MODEL_FILE (CPU)")
-            session
+        val modelBytes = try {
+            context.assets.open(MODEL_FILE).readBytes()
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to load $MODEL_FILE", e)
+            Log.e(TAG, "Failed to read $MODEL_FILE", e)
             null
+        }
+        ortSession = if (modelBytes == null) null else {
+            // Try NNAPI first for ~5-10x speedup; some models have ops NNAPI can't handle,
+            // so fall back to CPU in that case.
+            var session: OrtSession? = null
+            if (!isEmulator()) {
+                try {
+                    val opts = OrtSession.SessionOptions().apply {
+                        addNnapi()
+                        setIntraOpNumThreads(4)
+                    }
+                    session = ortEnv.createSession(modelBytes, opts)
+                    Log.i(TAG, "ONNX session created with NNAPI")
+                } catch (e: Exception) {
+                    Log.w(TAG, "NNAPI failed (${e.message}), retrying on CPU")
+                }
+            }
+            if (session == null) {
+                try {
+                    val opts = OrtSession.SessionOptions().apply { setIntraOpNumThreads(4) }
+                    session = ortEnv.createSession(modelBytes, opts)
+                    Log.i(TAG, "ONNX session created on CPU")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to load $MODEL_FILE on CPU", e)
+                }
+            }
+            session
         }
     }
 
@@ -85,81 +112,78 @@ class OnnxInferenceEngine(context: Context) {
         if (numClasses == 0) return emptyList()
 
         // 1. Preprocess: letterbox to 640x640, normalize, NCHW float array
-        val inputData = preprocess(bitmap)
+        val preprocessed = preprocess(bitmap)
         val shape     = longArrayOf(1, 3, INPUT_SIZE.toLong(), INPUT_SIZE.toLong())
 
         // 2. Run inference
         val inputName  = session.inputNames.iterator().next()
-        val inputTensor = OnnxTensor.createTensor(ortEnv, FloatBuffer.wrap(inputData), shape)
-        val results    = session.run(mapOf(inputName to inputTensor))
+        return OnnxTensor.createTensor(ortEnv, FloatBuffer.wrap(preprocessed.inputData), shape).use { inputTensor ->
+            session.run(mapOf(inputName to inputTensor)).use { results ->
+                // 3. Parse output: shape [1][4+numClasses][8400]
+                @Suppress("UNCHECKED_CAST")
+                val output = (results[0].value as Array<Array<FloatArray>>)[0]
 
-        // 3. Parse output: shape [1][4+numClasses][8400]
-        @Suppress("UNCHECKED_CAST")
-        val output = (results[0].value as Array<Array<FloatArray>>)[0]
+                val detections = mutableListOf<FloatArray>() // [x1, y1, x2, y2, conf, classId]
 
-        val detections = mutableListOf<FloatArray>() // [x1, y1, x2, y2, conf, classId]
+                for (a in 0 until NUM_ANCHORS) {
+                    val cx = output[0][a]
+                    val cy = output[1][a]
+                    val w  = output[2][a]
+                    val h  = output[3][a]
 
-        for (a in 0 until NUM_ANCHORS) {
-            val cx = output[0][a]
-            val cy = output[1][a]
-            val w  = output[2][a]
-            val h  = output[3][a]
+                    var maxScore = 0f
+                    var classId  = -1
+                    for (c in 0 until numClasses) {
+                        val score = output[4 + c][a]
+                        if (score > maxScore) {
+                            maxScore = score
+                            classId  = c
+                        }
+                    }
 
-            var maxScore = 0f
-            var classId  = -1
-            for (c in 0 until numClasses) {
-                val score = output[4 + c][a]
-                if (score > maxScore) {
-                    maxScore = score
-                    classId  = c
+                    if (maxScore < confidenceThreshold) continue
+
+                    // Map from 640x640 letterbox space back to original bitmap coordinates
+                    val x1 = (cx - w / 2f - preprocessed.padX) / preprocessed.scale
+                    val y1 = (cy - h / 2f - preprocessed.padY) / preprocessed.scale
+                    val x2 = (cx + w / 2f - preprocessed.padX) / preprocessed.scale
+                    val y2 = (cy + h / 2f - preprocessed.padY) / preprocessed.scale
+
+                    detections.add(floatArrayOf(x1, y1, x2, y2, maxScore, classId.toFloat()))
+                }
+
+                // 4. Non-Maximum Suppression
+                val kept = nms(detections, IOU_THRESHOLD)
+
+                // 5. Map to TrafficSign domain objects
+                kept.map { det ->
+                    val id    = det[5].toInt()
+                    val label = classNames.getOrElse(id) { "Unknown ($id)" }
+                    TrafficSign(
+                        label      = label,
+                        confidence = det[4],
+                        boundingBox = TrafficSign.BoundingBox(
+                            left   = det[0].coerceAtLeast(0f),
+                            top    = det[1].coerceAtLeast(0f),
+                            right  = det[2].coerceAtMost(bitmap.width.toFloat()),
+                            bottom = det[3].coerceAtMost(bitmap.height.toFloat())
+                        ),
+                        isCritical = SignLabelToSpeech.isCriticalRoadAlert(label)
+                    )
                 }
             }
-
-            if (maxScore < confidenceThreshold) continue
-
-            // Map from 640x640 letterbox space back to original bitmap coordinates
-            val x1 = (cx - w / 2f - letterboxPadX) / letterboxScale
-            val y1 = (cy - h / 2f - letterboxPadY) / letterboxScale
-            val x2 = (cx + w / 2f - letterboxPadX) / letterboxScale
-            val y2 = (cy + h / 2f - letterboxPadY) / letterboxScale
-
-            detections.add(floatArrayOf(x1, y1, x2, y2, maxScore, classId.toFloat()))
-        }
-
-        // 4. Non-Maximum Suppression
-        val kept = nms(detections, IOU_THRESHOLD)
-
-        // 5. Map to TrafficSign domain objects
-        return kept.map { det ->
-            val id    = det[5].toInt()
-            val label = classNames.getOrElse(id) { "Unknown ($id)" }
-            TrafficSign(
-                label      = label,
-                confidence = det[4],
-                boundingBox = TrafficSign.BoundingBox(
-                    left   = det[0].coerceAtLeast(0f),
-                    top    = det[1].coerceAtLeast(0f),
-                    right  = det[2].coerceAtMost(bitmap.width.toFloat()),
-                    bottom = det[3].coerceAtMost(bitmap.height.toFloat())
-                ),
-                isCritical = false
-            )
         }
     }
 
     // Letterbox to 640x640, normalize [0,1], return NCHW float array.
-    private var letterboxPadX = 0
-    private var letterboxPadY = 0
-    private var letterboxScale = 1f
-
-    private fun preprocess(bitmap: Bitmap): FloatArray {
+    private fun preprocess(bitmap: Bitmap): PreprocessedFrame {
         val srcW = bitmap.width
         val srcH = bitmap.height
-        letterboxScale = minOf(INPUT_SIZE.toFloat() / srcW, INPUT_SIZE.toFloat() / srcH)
+        val letterboxScale = minOf(INPUT_SIZE.toFloat() / srcW, INPUT_SIZE.toFloat() / srcH)
         val newW = (srcW * letterboxScale).toInt()
         val newH = (srcH * letterboxScale).toInt()
-        letterboxPadX = (INPUT_SIZE - newW) / 2
-        letterboxPadY = (INPUT_SIZE - newH) / 2
+        val letterboxPadX = (INPUT_SIZE - newW) / 2
+        val letterboxPadY = (INPUT_SIZE - newH) / 2
 
         val resized     = Bitmap.createScaledBitmap(bitmap, newW, newH, true)
         val letterboxed = Bitmap.createBitmap(INPUT_SIZE, INPUT_SIZE, Bitmap.Config.ARGB_8888)
@@ -181,7 +205,12 @@ class OnnxInferenceEngine(context: Context) {
 
         if (resized != bitmap) resized.recycle()
         letterboxed.recycle()
-        return floatArray
+        return PreprocessedFrame(
+            inputData = floatArray,
+            padX = letterboxPadX,
+            padY = letterboxPadY,
+            scale = letterboxScale,
+        )
     }
 
     // Greedy NMS: sort by confidence descending, suppress boxes with IoU >= threshold
@@ -218,4 +247,13 @@ class OnnxInferenceEngine(context: Context) {
         ortSession?.close()
         ortEnv.close()
     }
+
+    private fun isEmulator(): Boolean =
+        Build.FINGERPRINT.startsWith("generic") ||
+        Build.FINGERPRINT.startsWith("unknown") ||
+        Build.MODEL.contains("Emulator", ignoreCase = true) ||
+        Build.MODEL.contains("Android SDK", ignoreCase = true) ||
+        Build.MANUFACTURER.contains("Genymotion", ignoreCase = true) ||
+        Build.HARDWARE == "goldfish" ||
+        Build.HARDWARE == "ranchu"
 }

@@ -49,13 +49,11 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun setupRegion() {
-        val regions = listOf("EU", "US", "ASIA")
         val currentRegion = SettingsManager.getRegion(this)
         updateRegionButtons(currentRegion)
 
         binding.regionEu.setOnClickListener { selectRegion("EU") }
         binding.regionUs.setOnClickListener { selectRegion("US") }
-        binding.regionAsia.setOnClickListener { selectRegion("ASIA") }
     }
 
     private fun selectRegion(region: String) {
@@ -69,11 +67,9 @@ class SettingsActivity : AppCompatActivity() {
 
         binding.regionEu.setBackgroundResource(if (selected == "EU") R.drawable.bg_region_active else R.drawable.bg_region_inactive)
         binding.regionUs.setBackgroundResource(if (selected == "US") R.drawable.bg_region_active else R.drawable.bg_region_inactive)
-        binding.regionAsia.setBackgroundResource(if (selected == "ASIA") R.drawable.bg_region_active else R.drawable.bg_region_inactive)
 
         binding.regionEu.setTextColor(if (selected == "EU") activeColor else inactiveColor)
         binding.regionUs.setTextColor(if (selected == "US") activeColor else inactiveColor)
-        binding.regionAsia.setTextColor(if (selected == "ASIA") activeColor else inactiveColor)
     }
 
     private fun setupModel() {
@@ -101,7 +97,7 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun setupThreshold() {
         val current = SettingsManager.getConfidenceThreshold(this)
-        binding.confidenceSlider.value = current * 100f
+        binding.confidenceSlider.value = (Math.round(current * 100f / 5f) * 5f).coerceIn(0f, 100f)
         binding.confidenceValue.text = getString(R.string.settings_conf_threshold_value, (current * 100).toInt())
 
         binding.confidenceSlider.addOnChangeListener(Slider.OnChangeListener { _, value, _ ->

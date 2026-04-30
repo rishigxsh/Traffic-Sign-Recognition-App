@@ -147,10 +147,8 @@ Always pay attention to traffic signs while driving</string>
     <string name="hud_region_info">%1$s · CNN v2.1</string>
 
     <string-array name="settings_region_options">
-        <item>Automatic</item>
         <item>US / North America</item>
         <item>Europe (Vienna Convention)</item>
-        <item>Asia / Other</item>
     </string-array>
 
     <!-- Shared -->

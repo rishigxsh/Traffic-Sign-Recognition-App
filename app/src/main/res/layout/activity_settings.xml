@@ -311,19 +311,6 @@
                     android:textColor="@color/tsr_text_secondary"
                     android:textSize="13sp" />
 
-                <Button
-                    android:id="@+id/regionAsia"
-                    android:layout_width="0dp"
-                    android:layout_height="44dp"
-                    android:layout_marginStart="@dimen/tsr_space_xs"
-                    android:layout_weight="1"
-                    android:background="@drawable/bg_region_inactive"
-                    android:fontFamily="sans-serif-black"
-                    android:stateListAnimator="@null"
-                    android:text="@string/settings_region_asia"
-                    android:textAllCaps="false"
-                    android:textColor="@color/tsr_text_secondary"
-                    android:textSize="13sp" />
             </LinearLayout>
         </LinearLayout>
 

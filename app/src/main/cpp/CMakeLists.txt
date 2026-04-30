@@ -31,6 +31,11 @@ if(OpenCV_FOUND)
     target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${OpenCV_INCLUDE_DIRS})
 endif()
 
+target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
+        "-Wl,-z,max-page-size=16384"
+        "-Wl,-z,common-page-size=16384"
+)
+
 target_link_libraries(${CMAKE_PROJECT_NAME}
         android
         log

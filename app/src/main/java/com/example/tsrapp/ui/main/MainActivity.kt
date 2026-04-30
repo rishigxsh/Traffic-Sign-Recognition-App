@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageFormat
+import android.graphics.Matrix
 import android.graphics.Rect
 import android.graphics.YuvImage
 import android.os.Bundle
@@ -14,11 +15,14 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.camera.core.*
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageProxy
+import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.createBitmap
-import androidx.lifecycle.Observer
 import com.example.tsrapp.R
 import com.example.tsrapp.databinding.ActivityMainBinding
 import com.example.tsrapp.util.DriverAlertFeedback
@@ -30,19 +34,20 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
+
     private lateinit var binding: ActivityMainBinding
     private val viewModel: MainViewModel by viewModels()
     private lateinit var cameraExecutor: ExecutorService
     private lateinit var ttsHelper: TextToSpeechHelper
     private var cameraProvider: ProcessCameraProvider? = null
-    private var isDetecting: Boolean = false
-    private var isInitializingCamera: Boolean = false
-    private var pendingStartAfterPermission: Boolean = false
+    private var isDetecting = false
+    private var isInitializingCamera = false
+    private var pendingStartAfterPermission = false
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
+    ) { granted ->
+        if (granted) {
             if (pendingStartAfterPermission) startCamera()
         } else {
             Toast.makeText(this, R.string.camera_permission_denied, Toast.LENGTH_LONG).show()
@@ -54,6 +59,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.cameraPreview.implementationMode = PreviewView.ImplementationMode.COMPATIBLE
 
         cameraExecutor = Executors.newSingleThreadExecutor()
         ttsHelper = TextToSpeechHelper(this)
@@ -66,7 +72,6 @@ class MainActivity : AppCompatActivity() {
 
         setupFloatingControls()
         setupBottomPanel()
-        setupTopBanner()
         observeDetections()
 
         binding.backButton.setOnClickListener { finish() }
@@ -74,15 +79,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupFloatingControls() {
-        // Voice settings trigger
         updateMuteButtonIcon()
-        
         binding.muteButton.setOnClickListener {
             val sheet = VoiceSettingsBottomSheet()
             sheet.show(supportFragmentManager, VoiceSettingsBottomSheet.TAG)
         }
-
-        // Stop detection (Quick access)
         binding.stopButton.setOnClickListener {
             if (isDetecting) stopCamera()
         }
@@ -90,7 +91,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateMuteButtonIcon() {
         val mode = SettingsManager.getVoiceMode(this)
-        val iconRes = when(mode) {
+        val iconRes = when (mode) {
             SettingsManager.VOICE_MUTED -> R.drawable.ic_mute
             SettingsManager.VOICE_ALERTS -> R.drawable.ic_alerts_only
             else -> R.drawable.ic_unmute
@@ -99,7 +100,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupBottomPanel() {
-        // Threshold slider
         val initialThreshold = SettingsManager.getConfidenceThreshold(this)
         binding.thresholdSlider.progress = (initialThreshold * 100).toInt()
         binding.statusThreshold.text = "${(initialThreshold * 100).toInt()}%"
@@ -107,8 +107,7 @@ class MainActivity : AppCompatActivity() {
         binding.thresholdSlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 if (fromUser) {
-                    val floatVal = progress / 100f
-                    SettingsManager.setConfidenceThreshold(this@MainActivity, floatVal)
+                    SettingsManager.setConfidenceThreshold(this@MainActivity, progress / 100f)
                     binding.statusThreshold.text = "$progress%"
                 }
             }
@@ -116,42 +115,44 @@ class MainActivity : AppCompatActivity() {
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
 
-        // Toggle detection
         binding.toggleDetectionButton.setOnClickListener {
             if (isDetecting) stopCamera() else startDetectionFlow()
         }
     }
 
-    private fun setupTopBanner() {
-        // Initially "Searching..."
-        binding.signBadgeSymbol.text = "🔍"
-    }
     private fun observeDetections() {
-        viewModel.detectedSigns.observe(this, Observer { signs ->
+        viewModel.detectedSigns.observe(this) { signs ->
             binding.detectionOverlay.updateDetections(signs)
-            
+
             val topSign = signs.firstOrNull()
             if (topSign != null) {
-                // Update top floating banner
                 binding.signBadgeSymbol.text = SignLabelToSpeech.getSymbol(topSign.label)
                 binding.detectedSignName.text = SignLabelToSpeech.toDisplayName(topSign.label)
-                binding.detectedSignType.text = "Highest confidence detected"
+                binding.detectedSignType.text = if (topSign.isCritical) "⚠ Critical sign" else "Detected"
                 binding.detectedConfidence.text = "${(topSign.confidence * 100).toInt()}%"
-                
-                // Voice alert (Queue all signs; cooldowns handled by helper)
+
+                if (topSign.isCritical) DriverAlertFeedback.vibrateShort(this)
+
                 signs.sortedByDescending { it.confidence }.forEach { sign ->
                     ttsHelper.speakDrivingSign(sign.label)
                 }
+            } else if (isDetecting) {
+                // Keep banner showing but update subtitle to "No signs detected"
+                binding.detectedSignType.text = "No signs detected"
             }
-        })
-        
-        viewModel.inferenceTimeMs.observe(this, Observer { ms ->
+        }
+
+        viewModel.inferenceTimeMs.observe(this) { ms ->
             binding.statusInference.text = if (ms != null && ms > 0) "${ms}ms" else "--"
-        })
-        
-        viewModel.fps.observe(this, Observer { valF ->
-            binding.statusFps.text = if (valF != null) "%.1f".format(valF) else "--"
-        })
+        }
+
+        viewModel.fps.observe(this) { fps ->
+            binding.statusFps.text = if (fps != null && fps > 0) "%.1f".format(fps) else "--"
+        }
+
+        viewModel.modelError.observe(this) { msg ->
+            if (msg != null) Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun showIdleState() {
@@ -165,14 +166,20 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showScanningState() {
+        binding.signBadgeSymbol.text = "📷"
+        binding.detectedSignName.text = "Detecting…"
+        binding.detectedSignType.text = "Looking for signs"
+        binding.detectedConfidence.text = ""
         binding.scanGridOverlay.visibility = View.VISIBLE
         binding.toggleDetectionButton.text = "STOP"
-        binding.toggleDetectionButton.alpha = 0.8f
+        binding.toggleDetectionButton.alpha = 0.85f
     }
 
     private fun startDetectionFlow() {
         if (isInitializingCamera) return
-        val hasPermission = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        val hasPermission = ContextCompat.checkSelfPermission(
+            this, Manifest.permission.CAMERA
+        ) == PackageManager.PERMISSION_GRANTED
         if (!hasPermission) {
             pendingStartAfterPermission = true
             requestPermissionLauncher.launch(Manifest.permission.CAMERA)
@@ -189,21 +196,30 @@ class MainActivity : AppCompatActivity() {
 
         val future = ProcessCameraProvider.getInstance(this)
         future.addListener({
-            val provider = future.get()
-            val preview = Preview.Builder().build().also {
-                it.setSurfaceProvider(binding.cameraPreview.surfaceProvider)
-            }
-            val imageAnalysis = ImageAnalysis.Builder()
-                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                .build().also {
-                    it.setAnalyzer(cameraExecutor, FrameAnalyzer { bitmap ->
-                        binding.detectionOverlay.setSourceSize(bitmap.width, bitmap.height)
-                        viewModel.processFrame(bitmap)
-                    })
-                }
             try {
+                val provider = future.get()
+                val selector = when {
+                    provider.hasCamera(CameraSelector.DEFAULT_BACK_CAMERA) ->
+                        CameraSelector.DEFAULT_BACK_CAMERA
+                    provider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA) ->
+                        CameraSelector.DEFAULT_FRONT_CAMERA
+                    else -> throw IllegalStateException("No available camera on this device")
+                }
+
+                val preview = Preview.Builder().build().also {
+                    it.setSurfaceProvider(binding.cameraPreview.surfaceProvider)
+                }
+                val imageAnalysis = ImageAnalysis.Builder()
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .build().also {
+                        it.setAnalyzer(cameraExecutor, FrameAnalyzer { bitmap ->
+                            binding.detectionOverlay.setSourceSize(bitmap.width, bitmap.height)
+                            viewModel.processFrame(bitmap)
+                        })
+                    }
+
                 provider.unbindAll()
-                provider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, imageAnalysis)
+                provider.bindToLifecycle(this, selector, preview, imageAnalysis)
                 cameraProvider = provider
                 isDetecting = true
                 isInitializingCamera = false
@@ -222,6 +238,7 @@ class MainActivity : AppCompatActivity() {
     private fun stopCamera() {
         cameraProvider?.unbindAll()
         isDetecting = false
+        viewModel.clearSmoothing()
         showIdleState()
     }
 
@@ -237,29 +254,76 @@ class MainActivity : AppCompatActivity() {
         ttsHelper.shutdown()
     }
 
-    private class FrameAnalyzer(private val onFrameAvailable: (Bitmap) -> Unit) : ImageAnalysis.Analyzer {
+    // ── Frame conversion (unchanged) ──────────────────────────────────────────
+
+    private class FrameAnalyzer(private val onFrameAvailable: (Bitmap) -> Unit) :
+        ImageAnalysis.Analyzer {
+
         override fun analyze(imageProxy: ImageProxy) {
             val bitmap = imageProxyToBitmap(imageProxy)
             onFrameAvailable(bitmap)
             imageProxy.close()
         }
+
         private fun imageProxyToBitmap(imageProxy: ImageProxy): Bitmap {
-            val yBuffer = imageProxy.planes[0].buffer
-            val uBuffer = imageProxy.planes[1].buffer
-            val vBuffer = imageProxy.planes[2].buffer
-            val ySize = yBuffer.remaining()
-            val uSize = uBuffer.remaining()
-            val vSize = vBuffer.remaining()
-            val nv21 = ByteArray(ySize + uSize + vSize)
-            yBuffer.get(nv21, 0, ySize)
-            vBuffer.get(nv21, ySize, vSize)
-            uBuffer.get(nv21, ySize + vSize, uSize)
+            val nv21 = yuv420888ToNv21(imageProxy)
             val yuvImage = YuvImage(nv21, ImageFormat.NV21, imageProxy.width, imageProxy.height, null)
             val out = ByteArrayOutputStream()
-            yuvImage.compressToJpeg(Rect(0, 0, imageProxy.width, imageProxy.height), 80, out)
+            yuvImage.compressToJpeg(Rect(0, 0, imageProxy.width, imageProxy.height), 90, out)
             val bytes = out.toByteArray()
-            return BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: createBitmap(imageProxy.width, imageProxy.height, Bitmap.Config.ARGB_8888)
+            val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                ?: createBitmap(imageProxy.width, imageProxy.height, Bitmap.Config.ARGB_8888)
+            return rotateBitmapIfNeeded(decoded, imageProxy.imageInfo.rotationDegrees)
+        }
+
+        private fun yuv420888ToNv21(imageProxy: ImageProxy): ByteArray {
+            val width = imageProxy.width
+            val height = imageProxy.height
+            val nv21 = ByteArray(width * height + width * height / 2)
+            imageProxy.planes[0].copyPlaneTo(nv21, 0, width, height)
+            imageProxy.planes[2].copyChromaTo(nv21, width * height, width, height, imageProxy.planes[1])
+            return nv21
+        }
+
+        private fun ImageProxy.PlaneProxy.copyPlaneTo(
+            out: ByteArray, offset: Int, width: Int, height: Int
+        ) {
+            val buffer = buffer.duplicate().also { it.rewind() }
+            var outIdx = offset
+            for (row in 0 until height) {
+                buffer.position(row * rowStride)
+                if (pixelStride == 1) {
+                    buffer.get(out, outIdx, width)
+                    outIdx += width
+                } else {
+                    for (col in 0 until width) {
+                        out[outIdx++] = buffer.get(row * rowStride + col * pixelStride)
+                    }
+                }
+            }
+        }
+
+        private fun ImageProxy.PlaneProxy.copyChromaTo(
+            out: ByteArray, offset: Int, width: Int, height: Int,
+            uPlane: ImageProxy.PlaneProxy
+        ) {
+            val vBuf = buffer.duplicate().also { it.rewind() }
+            val uBuf = uPlane.buffer.duplicate().also { it.rewind() }
+            var outIdx = offset
+            for (row in 0 until height / 2) {
+                for (col in 0 until width / 2) {
+                    out[outIdx++] = vBuf.get(row * rowStride + col * pixelStride)
+                    out[outIdx++] = uBuf.get(row * uPlane.rowStride + col * uPlane.pixelStride)
+                }
+            }
+        }
+
+        private fun rotateBitmapIfNeeded(bitmap: Bitmap, degrees: Int): Bitmap {
+            if (degrees == 0) return bitmap
+            val matrix = Matrix().apply { postRotate(degrees.toFloat()) }
+            val rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+            if (rotated != bitmap) bitmap.recycle()
+            return rotated
         }
     }
 }
-
