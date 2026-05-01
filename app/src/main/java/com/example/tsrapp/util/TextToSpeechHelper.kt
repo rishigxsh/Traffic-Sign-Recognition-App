@@ -44,8 +44,10 @@ class TextToSpeechHelper(context: Context) {
     private val spokenHistory = mutableMapOf<String, Long>()
 
     companion object {
-        private const val SAME_SIGN_COOLDOWN_MS = 15_000L
-        private const val GROUPING_WINDOW_MS = 6_000L // If signs are within 6s, skip "Sign ahead" prefix
+        private const val CRITICAL_COOLDOWN_MS = 5_000L
+        private const val REGULAR_COOLDOWN_MS  = 15_000L
+        private const val GROUPING_WINDOW_MS   = 6_000L
+        private const val ITEM_EXPIRY_MS       = 10_000L
         private const val TAG = "TextToSpeechHelper"
     }
 
@@ -104,10 +106,10 @@ class TextToSpeechHelper(context: Context) {
         val isCritical = SignLabelToSpeech.isCriticalRoadAlert(label)
         if (mode == SettingsManager.VOICE_ALERTS && !isCritical) return
 
-        // 1. Deduplication (Cooldown)
         val now = System.currentTimeMillis()
         val lastTime = spokenHistory[label] ?: 0L
-        if (now - lastTime < SAME_SIGN_COOLDOWN_MS) return
+        val cooldown = if (isCritical) CRITICAL_COOLDOWN_MS else REGULAR_COOLDOWN_MS
+        if (now - lastTime < cooldown) return
 
         // 2. Priority Calculation
         val priority = when {
@@ -130,11 +132,15 @@ class TextToSpeechHelper(context: Context) {
 
     private fun processNextInQueue() {
         if (isProcessingSpeech || !isInitialized || tts == null) return
-        
-        val item = speechQueue.poll() ?: return
-        
-        // Final check: is sign still valid (optional expiration logic could go here)
-        
+
+        val now = System.currentTimeMillis()
+        var item = speechQueue.poll()
+        while (item != null && now - item.timestamp > ITEM_EXPIRY_MS) {
+            item = speechQueue.poll()
+        }
+        item ?: return
+
+
         speakItem(item)
     }
 
@@ -161,8 +167,10 @@ class TextToSpeechHelper(context: Context) {
 
     private fun speakItem(item: SpeechItem) {
         val now = System.currentTimeMillis()
-        val usePrefix = (now - lastSpokenTime > GROUPING_WINDOW_MS)
-        
+        val isCritical = item.priority == 1
+        val usePrefix = !isCritical && (now - lastSpokenTime > GROUPING_WINDOW_MS)
+
+
         val finalPhrase = if (usePrefix) "Sign ahead ${item.phrase}" else item.phrase
         val id = "tsr_${UUID.randomUUID()}"
         val params = android.os.Bundle()

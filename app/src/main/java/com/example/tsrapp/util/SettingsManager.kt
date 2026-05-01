@@ -90,7 +90,7 @@ object SettingsManager {
     }
 
     fun getConfidenceThreshold(context: Context): Float =
-        prefs(context).getFloat(KEY_CONFIDENCE_THRESHOLD, 0.20f)
+        prefs(context).getFloat(KEY_CONFIDENCE_THRESHOLD, 0.40f)
 
     fun setConfidenceThreshold(context: Context, threshold: Float) {
         prefs(context).edit {
@@ -107,12 +107,10 @@ object SettingsManager {
         }
     }
 
-    /**
-     * Returns the [ModelRegion] that corresponds to the currently saved region setting.
-     * Defaults to [ModelRegion.US] for any unrecognised value (e.g. "Automatic", "ASIA").
-     */
+
     fun getModelRegion(context: Context): ModelRegion =
         ModelRegion.fromString(getRegion(context))
+
 
     fun getVoiceMode(context: Context): String =
         prefs(context).getString(KEY_VOICE_MODE, VOICE_ALERTS) ?: VOICE_ALERTS

@@ -1,4 +1,4 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
+<resources>
     <style name="Theme.TSRApp" parent="Theme.MaterialComponents.Light.NoActionBar">
         <item name="colorPrimary">@color/tsr_navy</item>
         <item name="colorPrimaryVariant">@color/tsr_navy_light</item>
@@ -6,7 +6,8 @@
         <item name="colorSecondary">@color/tsr_info</item>
         <item name="colorOnSecondary">@color/white</item>
         <item name="android:colorBackground">@color/tsr_bg</item>
-        <item name="android:statusBarColor">@color/tsr_navy</item>
-        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
     </style>
 </resources>

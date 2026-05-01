@@ -2,6 +2,7 @@ package com.example.tsrapp.ui.main
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import androidx.core.graphics.scale
 import android.graphics.Color
 import android.graphics.ImageDecoder
 import android.graphics.Paint
@@ -89,6 +90,13 @@ class TestModeActivity : AppCompatActivity() {
         binding = ActivityTestModeBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // Handle edge-to-edge and system bar insets
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
+            val systemBars = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            view.setPadding(0, systemBars.top, 0, systemBars.bottom)
+            insets
+        }
         ttsHelper = TextToSpeechHelper(this)
         ttsHelper.initialize { success ->
             if (!success && SettingsManager.isTtsEnabled(this)) {
@@ -150,7 +158,7 @@ class TestModeActivity : AppCompatActivity() {
 
     private fun runInference(uri: Uri) {
         showImagePreviewMode()
-        binding.resultsText.text = "Running inference..."
+        binding.resultsText.text = getString(R.string.test_mode_running_inference)
         setTestInputsEnabled(false)
 
         lifecycleScope.launch {
@@ -158,12 +166,15 @@ class TestModeActivity : AppCompatActivity() {
                 val bitmap = withContext(Dispatchers.IO) { decodeBitmap(uri) }
                 val threshold = SettingsManager.getConfidenceThreshold(this@TestModeActivity)
 
-                val start = System.currentTimeMillis()
                 val engine = inferenceEngine ?: withContext(Dispatchers.Default) {
                     OnnxInferenceEngine(
                         this@TestModeActivity,
                         SettingsManager.getModelRegion(this@TestModeActivity)
                     ).also { inferenceEngine = it }
+                }
+                if (!engine.isModelLoaded) {
+                    binding.resultsText.text = getString(R.string.test_mode_model_failed)
+                    return@launch
                 }
                 val signs = withContext(Dispatchers.Default) {
                     engine.detect(bitmap, threshold)
@@ -193,7 +204,7 @@ class TestModeActivity : AppCompatActivity() {
                     announceAllSignsForTest(signs)
                 }
             } catch (e: Exception) {
-                binding.resultsText.text = "Error: ${e.message ?: "unknown"}"
+                binding.resultsText.text = getString(R.string.test_mode_error, e.message ?: "unknown")
             } finally {
                 setTestInputsEnabled(true)
             }
@@ -211,7 +222,15 @@ class TestModeActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val threshold = SettingsManager.getConfidenceThreshold(this@TestModeActivity)
             val engine = inferenceEngine ?: withContext(Dispatchers.Default) {
-                OnnxInferenceEngine(this@TestModeActivity).also { inferenceEngine = it }
+                OnnxInferenceEngine(
+                    this@TestModeActivity,
+                    SettingsManager.getModelRegion(this@TestModeActivity)
+                ).also { inferenceEngine = it }
+            }
+            if (!engine.isModelLoaded) {
+                binding.resultsText.text = getString(R.string.test_mode_model_failed)
+                setTestInputsEnabled(true)
+                return@launch
             }
 
             withContext(Dispatchers.Main) {
@@ -263,7 +282,7 @@ class TestModeActivity : AppCompatActivity() {
                     contentResolver.openAssetFileDescriptor(uri, "r")?.use { afd ->
                         setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
                     }
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     // Fallback: Copy to a local cache file (most reliable)
                     val tempFile = java.io.File(cacheDir, "temp_test_video.mp4")
                     contentResolver.openInputStream(uri)?.use { input ->
@@ -299,7 +318,7 @@ class TestModeActivity : AppCompatActivity() {
             }
         } catch (e: Exception) {
             setTestInputsEnabled(true)
-            binding.resultsText.text = "Video error: ${e.message ?: "unknown"}"
+            binding.resultsText.text = getString(R.string.test_mode_video_error, e.message ?: "unknown")
         }
     }
 
@@ -502,7 +521,6 @@ class TestModeActivity : AppCompatActivity() {
         else
             signs.joinToString("\n") { "${SignLabelToSpeech.toDisplayName(it.label)} ${"%.1f".format(it.confidence * 100)}%" }
     }
-
     private fun annotateBitmap(bitmap: Bitmap, signs: List<TrafficSign>): Bitmap {
         val annotated = bitmap.copy(Bitmap.Config.ARGB_8888, true)
         val canvas = Canvas(annotated)
@@ -533,9 +551,7 @@ class TestModeActivity : AppCompatActivity() {
             } else {
                 val full = tw.getBitmap() ?: return null
                 if (full.width == targetW && full.height == targetH) full
-                else Bitmap.createScaledBitmap(full, targetW, targetH, true).also {
-                    if (it != full) full.recycle()
-                }
+                else full.scale(targetW, targetH).also { full.recycle() }
             }
         } catch (_: Exception) {
             null

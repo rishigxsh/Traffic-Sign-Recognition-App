@@ -52,8 +52,8 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:paddingHorizontal="@dimen/tsr_space_xl"
-                android:paddingTop="28dp"
-                android:paddingBottom="@dimen/tsr_space_xl">
+                android:paddingTop="@dimen/tsr_space_xl"
+                android:paddingBottom="@dimen/tsr_space_lg">
 
                 <TextView
                     style="@style/TextAppearance.TSR.ScreenTitle"
@@ -64,12 +64,12 @@
                 <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
+                    android:layout_marginTop="@dimen/tsr_space_sm"
                     android:background="@drawable/bg_home_badge"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
-                    android:paddingHorizontal="14dp"
-                    android:paddingVertical="7dp">
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="6dp">
 
                     <View
                         android:layout_width="8dp"
@@ -80,31 +80,33 @@
                         style="@style/TextAppearance.TSR.Body"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="10dp"
+                        android:layout_marginStart="8dp"
                         android:text="@string/home_subtitle"
                         android:textColor="#5A5A6E"
                         android:textSize="13sp" />
                 </LinearLayout>
             </LinearLayout>
 
-            <LinearLayout
+            <androidx.constraintlayout.widget.ConstraintLayout
                 android:id="@+id/startButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginHorizontal="16dp"
+                android:layout_marginHorizontal="@dimen/tsr_margin_default"
                 android:background="@drawable/bg_home_primary_card"
                 android:clickable="true"
-                android:elevation="8dp"
+                android:elevation="6dp"
                 android:focusable="true"
                 android:foreground="?attr/selectableItemBackground"
-                android:minHeight="252dp"
-                android:orientation="vertical"
-                android:padding="24dp">
+                android:minHeight="@dimen/tsr_home_card_min_height"
+                android:padding="@dimen/tsr_space_xl">
 
                 <FrameLayout
-                    android:layout_width="58dp"
-                    android:layout_height="58dp"
-                    android:background="@drawable/bg_home_primary_icon">
+                    android:id="@+id/iconFrame"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:background="@drawable/bg_home_primary_icon"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent">
 
                     <ImageView
                         android:layout_width="24dp"
@@ -115,32 +117,43 @@
                 </FrameLayout>
 
                 <TextView
+                    android:id="@+id/cardTitle"
                     style="@style/TextAppearance.TSR.CardTitle.OnDark"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="28dp"
+                    android:layout_marginTop="@dimen/tsr_space_lg"
                     android:text="@string/home_live_detection"
-                    android:textSize="22sp" />
+                    android:textSize="22sp"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/iconFrame" />
 
                 <TextView
+                    android:id="@+id/cardDesc"
                     style="@style/TextAppearance.TSR.Body.OnDark"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
+                    android:layout_marginTop="4dp"
                     android:text="@string/home_live_detection_desc"
                     android:textColor="#8F90A6"
-                    android:textSize="15sp" />
+                    android:textSize="15sp"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/cardTitle" />
 
                 <LinearLayout
                     android:id="@+id/startScanActionButton"
                     android:layout_width="match_parent"
                     android:layout_height="54dp"
-                    android:layout_marginTop="28dp"
+                    android:layout_marginTop="@dimen/tsr_space_xl"
                     android:background="@drawable/bg_home_primary_action"
                     android:clickable="false"
                     android:focusable="false"
                     android:gravity="center"
-                    android:orientation="horizontal">
+                    android:orientation="horizontal"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/cardDesc"
+                    app:layout_constraintVertical_bias="1.0">
 
                     <ImageView
                         android:layout_width="18dp"
@@ -157,7 +170,7 @@
                         android:textColor="#2B2D42"
                         android:textSize="16sp" />
                 </LinearLayout>
-            </LinearLayout>
+            </androidx.constraintlayout.widget.ConstraintLayout>
 
             <TextView
                 style="@style/TextAppearance.TSR.SectionLabel"
@@ -169,22 +182,22 @@
                 android:textAllCaps="false"
                 android:textSize="14sp" />
 
+<!--
             <LinearLayout
                 android:id="@+id/testModeButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginHorizontal="16dp"
-                android:layout_marginTop="14dp"
+                android:layout_marginHorizontal="@dimen/tsr_margin_default"
+                android:layout_marginTop="@dimen/tsr_space_md"
                 android:background="@drawable/bg_home_option_row"
                 android:clickable="true"
-                android:elevation="1.5dp"
+                android:elevation="1dp"
                 android:focusable="true"
                 android:foreground="?attr/selectableItemBackground"
                 android:gravity="center_vertical"
-                android:minHeight="84dp"
+                android:minHeight="80dp"
                 android:orientation="horizontal"
-                android:paddingHorizontal="18dp"
-                android:paddingVertical="18dp">
+                android:padding="@dimen/tsr_space_md">
 
                 <FrameLayout
                     android:layout_width="52dp"
@@ -202,7 +215,7 @@
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
+                    android:layout_marginStart="@dimen/tsr_space_md"
                     android:layout_weight="1"
                     android:orientation="vertical">
 
@@ -211,7 +224,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/home_test_mode"
-                        android:textSize="18sp" />
+                        android:textSize="17sp" />
 
                     <TextView
                         style="@style/TextAppearance.TSR.Body"
@@ -219,39 +232,39 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
                         android:text="@string/home_test_mode_desc"
-                        android:textSize="14sp" />
+                        android:textSize="13sp" />
                 </LinearLayout>
 
                 <FrameLayout
-                    android:layout_width="36dp"
-                    android:layout_height="36dp"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
                     android:background="@drawable/bg_home_option_arrow">
 
                     <ImageView
-                        android:layout_width="18dp"
-                        android:layout_height="18dp"
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
                         android:layout_gravity="center"
                         android:contentDescription="@string/home_test_mode"
                         android:src="@drawable/ic_home_chevron" />
                 </FrameLayout>
             </LinearLayout>
+-->
 
             <LinearLayout
                 android:id="@+id/settingsButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginHorizontal="16dp"
-                android:layout_marginTop="14dp"
+                android:layout_marginHorizontal="@dimen/tsr_margin_default"
+                android:layout_marginTop="@dimen/tsr_space_md"
                 android:background="@drawable/bg_home_option_row"
                 android:clickable="true"
-                android:elevation="1.5dp"
+                android:elevation="1dp"
                 android:focusable="true"
                 android:foreground="?attr/selectableItemBackground"
                 android:gravity="center_vertical"
-                android:minHeight="84dp"
+                android:minHeight="80dp"
                 android:orientation="horizontal"
-                android:paddingHorizontal="18dp"
-                android:paddingVertical="18dp">
+                android:padding="@dimen/tsr_space_md">
 
                 <FrameLayout
                     android:layout_width="52dp"
@@ -269,7 +282,7 @@
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
+                    android:layout_marginStart="@dimen/tsr_space_md"
                     android:layout_weight="1"
                     android:orientation="vertical">
 
@@ -278,7 +291,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/home_settings"
-                        android:textSize="18sp" />
+                        android:textSize="17sp" />
 
                     <TextView
                         style="@style/TextAppearance.TSR.Body"
@@ -286,17 +299,17 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
                         android:text="@string/home_settings_desc"
-                        android:textSize="14sp" />
+                        android:textSize="13sp" />
                 </LinearLayout>
 
                 <FrameLayout
-                    android:layout_width="36dp"
-                    android:layout_height="36dp"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
                     android:background="@drawable/bg_home_option_arrow">
 
                     <ImageView
-                        android:layout_width="18dp"
-                        android:layout_height="18dp"
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
                         android:layout_gravity="center"
                         android:contentDescription="@string/home_settings"
                         android:src="@drawable/ic_home_chevron" />

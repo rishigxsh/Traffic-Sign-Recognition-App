@@ -94,6 +94,14 @@ Always pay attention to traffic signs while driving</string>
     <string name="test_mode_video_ended">Playback finished.</string>
     <string name="test_mode_results_title">Detections</string>
     <string name="test_mode_no_results">No detections yet. Pick an image or video to get started.</string>
+    <string name="test_mode_running_inference">Running inference…</string>
+    <string name="test_mode_model_failed">Model failed to load. Check logcat for details.</string>
+    <string name="test_mode_detections_count">Detections: %1$d</string>
+    <string name="test_mode_top_confidence">Top confidence: %1$.1f%%</string>
+    <string name="test_mode_inference_time">Inference time: %1$dms</string>
+    <string name="test_mode_no_signs_above_threshold">No signs detected above %1$d%% confidence.</string>
+    <string name="test_mode_error">Error: %1$s</string>
+    <string name="test_mode_video_error">Video error: %1$s</string>
     <string name="test_mode_accuracy_default">Accuracy: &#8212;</string>
     <string name="test_mode_precision_default">Precision: &#8212;</string>
     <string name="test_mode_recall_default">Recall: &#8212;</string>
@@ -148,10 +156,8 @@ Always pay attention to traffic signs while driving</string>
     <string name="hud_region_info">%1$s · CNN v2.1</string>
 
     <string-array name="settings_region_options">
-        <item>Automatic</item>
         <item>US / North America</item>
         <item>Europe (Vienna Convention)</item>
-        <item>Asia / Other</item>
     </string-array>
 
     <!-- Shared -->

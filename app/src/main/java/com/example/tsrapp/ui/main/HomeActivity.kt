@@ -15,6 +15,15 @@ class HomeActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityHomeBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        supportActionBar?.hide()
+
+        // Handle edge-to-edge and system bar insets
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
+            val systemBars = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            view.setPadding(0, systemBars.top, 0, systemBars.bottom)
+            insets
+        }
 
         binding.startButton.setOnClickListener {
             showLiveDetectionNote()
@@ -22,9 +31,11 @@ class HomeActivity : AppCompatActivity() {
         binding.startScanActionButton.setOnClickListener {
             showLiveDetectionNote()
         }
+/*
         binding.testModeButton.setOnClickListener {
             startActivity(Intent(this, TestModeActivity::class.java))
         }
+*/
         binding.settingsButton.setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
