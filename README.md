@@ -6,6 +6,21 @@ using on-device YOLOv8 inference — no internet connection required.
 
 ---
 
+## Demo
+
+<table>
+  <tr>
+    <td align="center"><b>US Model</b></td>
+    <td align="center"><b>EU Model</b></td>
+  </tr>
+  <tr>
+    <td><img src=".github/assets/us_demo.gif" width="400"/></td>
+    <td><img src=".github/assets/eu_demo.gif" width="400"/></td>
+  </tr>
+</table>
+
+---
+
 ## Project Structure
 
 ```
