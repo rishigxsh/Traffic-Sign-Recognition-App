@@ -145,9 +145,9 @@ DetectionOverlayView draws boxes + TTS speaks sign name (priority queue based)
 ## Tech Stack
 
 | Layer               | Technology                                                |
-| ------------------- | --------------------------------------------------------- | --- |
+| ------------------- | --------------------------------------------------------- |
 | Android UI          | Kotlin, CameraX, MVVM, LiveData, NoActionBar Design       |
-| On-device inference | ONNX Runtime for Android 1.16.3 + NNAPI Support           |     |
+| On-device inference | ONNX Runtime for Android 1.16.3 + NNAPI Support           |
 | Models              | Regional YOLOv8s (US/EU) + MobileNetV3 Cascade Refinement |
 
 ---
