@@ -83,6 +83,14 @@ class TestModeActivity : AppCompatActivity() {
         binding = ActivityTestModeBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // Handle edge-to-edge and system bar insets
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
+            val systemBars = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            view.setPadding(0, systemBars.top, 0, systemBars.bottom)
+            insets
+        }
+
         ttsHelper = TextToSpeechHelper(this)
         ttsHelper.initialize { success ->
             if (!success && SettingsManager.isTtsEnabled(this)) {

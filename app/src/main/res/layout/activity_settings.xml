@@ -64,8 +64,8 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:paddingHorizontal="@dimen/tsr_space_xl"
-            android:paddingTop="28dp"
-            android:paddingBottom="@dimen/tsr_space_xl">
+            android:paddingTop="@dimen/tsr_space_xl"
+            android:paddingBottom="@dimen/tsr_space_lg">
 
             <TextView
                 style="@style/TextAppearance.TSR.ScreenTitle"
@@ -141,6 +141,7 @@
                     android:checked="true" />
             </LinearLayout>
 
+<!--
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/testTtsButton"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
@@ -152,6 +153,7 @@
                 android:textColor="@color/tsr_navy"
                 app:cornerRadius="@dimen/tsr_radius_md"
                 app:strokeColor="@color/home_badge_border" />
+-->
 
             <View
                 android:layout_width="match_parent"

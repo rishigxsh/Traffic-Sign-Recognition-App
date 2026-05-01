@@ -19,6 +19,14 @@ class SettingsActivity : AppCompatActivity() {
         binding = ActivitySettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // Handle edge-to-edge and system bar insets
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
+            val systemBars = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            view.setPadding(0, systemBars.top, 0, systemBars.bottom)
+            insets
+        }
+
         binding.backButton.setOnClickListener { finish() }
 
         // Start non-essential UI logic after first frame to avoid ANR
@@ -27,7 +35,7 @@ class SettingsActivity : AppCompatActivity() {
             setupRegion()
             setupModel()
             setupThreshold()
-            setupTtsTest()
+            // setupTtsTest()
         }
     }
 
@@ -106,6 +114,7 @@ class SettingsActivity : AppCompatActivity() {
         })
     }
 
+    /*
     private fun setupTtsTest() {
         binding.testTtsButton.setOnClickListener {
             if (!SettingsManager.isTtsEnabled(this)) {
@@ -132,6 +141,7 @@ class SettingsActivity : AppCompatActivity() {
             }
         }
     }
+    */
 
     override fun onDestroy() {
         super.onDestroy()

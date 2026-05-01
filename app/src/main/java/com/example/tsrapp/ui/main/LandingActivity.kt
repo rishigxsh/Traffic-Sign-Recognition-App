@@ -59,6 +59,19 @@ class LandingActivity : AppCompatActivity() {
         binding = ActivityLandingBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // Handle edge-to-edge and system bar insets
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
+            val systemBars = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            binding.splashContent.setPadding(
+                binding.splashContent.paddingLeft,
+                systemBars.top + (24 * resources.displayMetrics.density).toInt(),
+                binding.splashContent.paddingRight,
+                systemBars.bottom + (24 * resources.displayMetrics.density).toInt()
+            )
+            insets
+        }
+
         loadSplashSigns()
         prepareIntroState()
         binding.root.post { startIntroAnimation() }

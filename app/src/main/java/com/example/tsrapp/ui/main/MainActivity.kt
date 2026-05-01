@@ -32,6 +32,11 @@ import com.example.tsrapp.util.TextToSpeechHelper
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.updateLayoutParams
+import android.view.ViewGroup.MarginLayoutParams
 
 class MainActivity : AppCompatActivity() {
 
@@ -59,6 +64,25 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        // Handle edge-to-edge and system bar insets
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            
+            // Adjust top banner margin to avoid status bar
+            binding.topBannerCard.updateLayoutParams<MarginLayoutParams> {
+                topMargin = systemBars.top + (12 * resources.displayMetrics.density).toInt()
+            }
+            
+            // Adjust bottom panel margin to avoid navigation bar
+            binding.bottomPanelCard.updateLayoutParams<MarginLayoutParams> {
+                bottomMargin = systemBars.bottom + (16 * resources.displayMetrics.density).toInt()
+            }
+            
+            insets
+        }
+
         binding.cameraPreview.implementationMode = PreviewView.ImplementationMode.COMPATIBLE
 
         cameraExecutor = Executors.newSingleThreadExecutor()
@@ -84,9 +108,11 @@ class MainActivity : AppCompatActivity() {
             val sheet = VoiceSettingsBottomSheet()
             sheet.show(supportFragmentManager, VoiceSettingsBottomSheet.TAG)
         }
+/*
         binding.stopButton.setOnClickListener {
             if (isDetecting) stopCamera()
         }
+*/
     }
 
     private fun updateMuteButtonIcon() {

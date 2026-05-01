@@ -15,4 +15,7 @@
     <dimen name="tsr_header_icon">48dp</dimen>
     <dimen name="tsr_action_button_height">56dp</dimen>
     <dimen name="tsr_preview_height">320dp</dimen>
+    <dimen name="tsr_card_padding">16dp</dimen>
+    <dimen name="tsr_home_card_min_height">200dp</dimen>
+    <dimen name="tsr_margin_default">16dp</dimen>
 </resources>
