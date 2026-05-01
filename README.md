@@ -1,8 +1,29 @@
 # Traffic Sign Recognition App
 
+![Android](https://img.shields.io/badge/Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)
+![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)
+![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)
+![YOLOv8](https://img.shields.io/badge/YOLOv8-111F68?style=for-the-badge&logo=yolo&logoColor=white)
+![ONNX](https://img.shields.io/badge/ONNX-005CED?style=for-the-badge&logo=onnx&logoColor=white)
+
 An Android application for real-time traffic sign detection built for people with disabilities.
 The app uses the device camera to detect and announce traffic signs (stop, yield, speed limits, etc.)
 using on-device YOLOv8 inference — no internet connection required.
+
+---
+
+## Demo
+
+<table>
+  <tr>
+    <td align="center"><b>US Model</b></td>
+    <td align="center"><b>EU Model</b></td>
+  </tr>
+  <tr>
+    <td><img src=".github/readme_assets/us_demo.gif" width="400"/></td>
+    <td><img src=".github/readme_assets/eu_demo.gif" width="400"/></td>
+  </tr>
+</table>
 
 ---
 
@@ -123,11 +144,10 @@ DetectionOverlayView draws boxes + TTS speaks sign name (priority queue based)
 
 ## Tech Stack
 
-| Layer               | Technology                                             |
-| ------------------- | ------------------------------------------------------ |
-| Android UI          | Kotlin, CameraX, MVVM, LiveData, NoActionBar Design    |
-| On-device inference | ONNX Runtime for Android 1.16.3 + NNAPI Support        |
-| Native utilities    | C++ (Tensor class, Logger, JNI)                        |
+| Layer               | Technology                                                |
+| ------------------- | --------------------------------------------------------- | --- |
+| Android UI          | Kotlin, CameraX, MVVM, LiveData, NoActionBar Design       |
+| On-device inference | ONNX Runtime for Android 1.16.3 + NNAPI Support           |     |
 | Models              | Regional YOLOv8s (US/EU) + MobileNetV3 Cascade Refinement |
 
 ---
