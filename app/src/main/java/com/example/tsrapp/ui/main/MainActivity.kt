@@ -69,17 +69,17 @@ class MainActivity : AppCompatActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            
+
             // Adjust top banner margin to avoid status bar
             binding.topBannerCard.updateLayoutParams<MarginLayoutParams> {
                 topMargin = systemBars.top + (12 * resources.displayMetrics.density).toInt()
             }
-            
+
             // Adjust bottom panel margin to avoid navigation bar
             binding.bottomPanelCard.updateLayoutParams<MarginLayoutParams> {
                 bottomMargin = systemBars.bottom + (16 * resources.displayMetrics.density).toInt()
             }
-            
+
             insets
         }
 
@@ -275,8 +275,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        stopCamera()
+        // Shut down the camera executor first so no new frames are submitted to the
+        // ViewModel after onCleared() begins closing the inference engine.
         cameraExecutor.shutdown()
+        stopCamera()
         ttsHelper.shutdown()
     }
 
@@ -290,7 +292,6 @@ class MainActivity : AppCompatActivity() {
             onFrameAvailable(bitmap)
             imageProxy.close()
         }
-
         private fun imageProxyToBitmap(imageProxy: ImageProxy): Bitmap {
             val nv21 = yuv420888ToNv21(imageProxy)
             val yuvImage = YuvImage(nv21, ImageFormat.NV21, imageProxy.width, imageProxy.height, null)

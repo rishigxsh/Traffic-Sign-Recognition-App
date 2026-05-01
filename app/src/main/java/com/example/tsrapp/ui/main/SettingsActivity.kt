@@ -1,6 +1,7 @@
 package com.example.tsrapp.ui.main
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.tsrapp.R
 import com.example.tsrapp.databinding.ActivitySettingsBinding
@@ -33,7 +34,7 @@ class SettingsActivity : AppCompatActivity() {
             setupRegion()
             setupModel()
             setupThreshold()
-            // setupTtsTest()
+            setupTtsTest()
         }
     }
 
@@ -111,19 +112,15 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
-    /*
     private fun setupTtsTest() {
         binding.testTtsButton.setOnClickListener {
             if (!SettingsManager.isTtsEnabled(this)) {
                 Toast.makeText(this, R.string.settings_tts_turn_on_first, Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            
-            // Lazy initialize ttsHelper only when needed
             if (ttsHelper == null) {
                 ttsHelper = TextToSpeechHelper(this)
             }
-            
             ttsHelper?.initialize { success ->
                 if (success) {
                     ttsHelper?.speak(getString(R.string.settings_tts_test_phrase))
@@ -138,7 +135,6 @@ class SettingsActivity : AppCompatActivity() {
             }
         }
     }
-    */
 
     override fun onDestroy() {
         super.onDestroy()

@@ -10,6 +10,7 @@ import com.example.tsrapp.data.model.TrafficSign
 import com.example.tsrapp.data.repository.TSRRepository
 import com.example.tsrapp.util.BoundingBoxSmoother
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -45,6 +46,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var lastRawDetections = listOf<TrafficSign>()
 
     private val smoother = BoundingBoxSmoother()
+
+    // Track the latest inference job so it can be canceled before closing the engine
+    private var inferenceJob: Job? = null
 
     private suspend fun getRepository(): TSRRepository {
         repository?.let { return it }
@@ -121,7 +125,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     override fun onCleared() {
         super.onCleared()
-        repository?.close()
+        // Cancel any in-flight inference BEFORE closing the engine.
+        // Close on a background thread — sessionLock.write blocks until detect() finishes,
+        // so we must NOT do this on the main thread or it causes a lag spike.
+        inferenceJob?.cancel()
+        val repoToClose = repository ?: return
         repository = null
+        Thread(repoToClose::close, "onnx-close").start()
     }
 }

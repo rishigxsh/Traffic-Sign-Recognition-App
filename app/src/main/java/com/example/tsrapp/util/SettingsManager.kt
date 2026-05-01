@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.edit
+import com.example.tsrapp.ml.ModelRegion
 
 object SettingsManager {
 
@@ -105,6 +106,11 @@ object SettingsManager {
             putString(KEY_REGION, region)
         }
     }
+
+
+    fun getModelRegion(context: Context): ModelRegion =
+        ModelRegion.fromString(getRegion(context))
+
 
     fun getVoiceMode(context: Context): String =
         prefs(context).getString(KEY_VOICE_MODE, VOICE_ALERTS) ?: VOICE_ALERTS

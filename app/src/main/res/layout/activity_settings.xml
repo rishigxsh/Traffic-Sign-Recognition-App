@@ -141,7 +141,6 @@
                     android:checked="true" />
             </LinearLayout>
 
-<!--
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/testTtsButton"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
@@ -153,7 +152,6 @@
                 android:textColor="@color/tsr_navy"
                 app:cornerRadius="@dimen/tsr_radius_md"
                 app:strokeColor="@color/home_badge_border" />
--->
 
             <View
                 android:layout_width="match_parent"

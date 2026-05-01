@@ -59,7 +59,6 @@ class LandingActivity : AppCompatActivity() {
         binding = ActivityLandingBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Handle edge-to-edge and system bar insets
         androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
         androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
             val systemBars = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
@@ -71,6 +70,7 @@ class LandingActivity : AppCompatActivity() {
             )
             insets
         }
+
 
         loadSplashSigns()
         prepareIntroState()

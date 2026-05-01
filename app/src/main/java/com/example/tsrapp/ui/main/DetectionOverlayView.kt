@@ -112,7 +112,8 @@ class DetectionOverlayView @JvmOverloads constructor(
         }
 
         // Draw bottom-to-top so highest-confidence boxes appear on top
-        val sorted = detections.filter { it.confidence >= threshold }
+        val thresholdVal = threshold ?: 0.5f
+        val sorted = detections.filter { it.confidence >= thresholdVal }
             .sortedBy { it.confidence }
 
         sorted.forEachIndexed { index, sign ->
@@ -180,4 +181,5 @@ class DetectionOverlayView @JvmOverloads constructor(
             else -> null
         }
     }
+}
 }

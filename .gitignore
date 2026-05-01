@@ -117,3 +117,4 @@ mtsd_yolo/
 # ----- ML Results -----
 model/results.csv
 exports/
+assets/

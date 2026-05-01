@@ -158,6 +158,15 @@
                     android:textSize="14sp" />
 
                 <TextView
+                    android:id="@+id/fpsText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/test_mode_fps_default"
+                    android:textColor="@android:color/white"
+                    android:background="#80000000"
+                    android:padding="4dp" />
+
+                <TextView
                     android:id="@+id/resultsText"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"

@@ -34,11 +34,11 @@ object SignLabelToSpeech {
             return categorySpoken[segments[0]]?.let { "$it sign" } ?: humanizeToken(segments[0])
         }
 
-        Regex("maximum-speed-limit-(\\d+)").find(detailSlug)?.let {
-            return "Speed limit"
+        Regex("maximum-speed-limit-(\\d+)").find(detailSlug)?.let { m ->
+            return "Speed limit ${m.groupValues[1]}"
         }
-        Regex("minimum-speed-limit-(\\d+)").find(detailSlug)?.let {
-            return "Minimum speed limit"
+        Regex("minimum-speed-limit-(\\d+)").find(detailSlug)?.let { m ->
+            return "Minimum speed ${m.groupValues[1]}"
         }
 
         return when {
@@ -66,11 +66,12 @@ object SignLabelToSpeech {
 
         val detailSlug = segments.drop(1).joinToString("-")
         
-        Regex("maximum-speed-limit-(\\d+)").find(detailSlug)?.let {
-            return "Speed limit"
+        // Match specific speed limits first for natural phrasing
+        Regex("maximum-speed-limit-(\\d+)").find(detailSlug)?.let { m ->
+            return "Speed limit ${m.groupValues[1]}"
         }
-        Regex("minimum-speed-limit-(\\d+)").find(detailSlug)?.let {
-            return "Minimum speed limit"
+        Regex("minimum-speed-limit-(\\d+)").find(detailSlug)?.let { m ->
+            return "Minimum speed ${m.groupValues[1]}"
         }
 
         // Return direct natural sign names

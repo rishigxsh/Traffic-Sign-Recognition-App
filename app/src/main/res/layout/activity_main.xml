@@ -73,7 +73,7 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="center"
                     android:textColor="@color/white"
-                    android:textSize="18sp"
+                    android:textSize="20sp"
                     android:fontFamily="sans-serif-black"
                     android:text="" />
             </FrameLayout>

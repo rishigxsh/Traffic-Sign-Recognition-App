@@ -25,11 +25,15 @@ import com.example.tsrapp.R
 import com.example.tsrapp.data.model.TrafficSign
 import com.example.tsrapp.databinding.ActivityTestModeBinding
 import com.example.tsrapp.ml.OnnxInferenceEngine
+import com.example.tsrapp.ml.VideoFileInference
 import com.example.tsrapp.util.DriverAlertFeedback
 import com.example.tsrapp.util.SettingsManager
 import com.example.tsrapp.util.SignLabelToSpeech
 import com.example.tsrapp.util.TextToSpeechHelper
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicBoolean
@@ -41,6 +45,8 @@ class TestModeActivity : AppCompatActivity() {
     private lateinit var binding: ActivityTestModeBinding
     private lateinit var ttsHelper: TextToSpeechHelper
     private var inferenceEngine: OnnxInferenceEngine? = null
+    private var videoFileInference: VideoFileInference? = null
+    private var videoJob: Job? = null
 
     private var lastVideoSpokenKey: String? = null
     private var lastVideoSpokenAt: Long = 0L
@@ -91,7 +97,6 @@ class TestModeActivity : AppCompatActivity() {
             view.setPadding(0, systemBars.top, 0, systemBars.bottom)
             insets
         }
-
         ttsHelper = TextToSpeechHelper(this)
         ttsHelper.initialize { success ->
             if (!success && SettingsManager.isTtsEnabled(this)) {
@@ -109,6 +114,7 @@ class TestModeActivity : AppCompatActivity() {
             pickImageLauncher.launch("image/*")
         }
         binding.pickVideoButton.setOnClickListener {
+            videoJob?.cancel()
             pickVideoLauncher.launch("video/*")
         }
     }
@@ -160,9 +166,11 @@ class TestModeActivity : AppCompatActivity() {
                 val bitmap = withContext(Dispatchers.IO) { decodeBitmap(uri) }
                 val threshold = SettingsManager.getConfidenceThreshold(this@TestModeActivity)
 
-                val start = System.currentTimeMillis()
                 val engine = inferenceEngine ?: withContext(Dispatchers.Default) {
-                    OnnxInferenceEngine(this@TestModeActivity).also { inferenceEngine = it }
+                    OnnxInferenceEngine(
+                        this@TestModeActivity,
+                        SettingsManager.getModelRegion(this@TestModeActivity)
+                    ).also { inferenceEngine = it }
                 }
                 if (!engine.isModelLoaded) {
                     binding.resultsText.text = getString(R.string.test_mode_model_failed)
@@ -177,13 +185,13 @@ class TestModeActivity : AppCompatActivity() {
                 binding.previewImage.setImageBitmap(annotated)
 
                 val topConf = signs.maxOfOrNull { it.confidence } ?: 0f
-                binding.metricsAccuracy.text = getString(R.string.test_mode_detections_count, signs.size)
-                binding.metricsPrecision.text = getString(R.string.test_mode_top_confidence, topConf * 100)
-                binding.metricsRecall.text = getString(R.string.test_mode_inference_time, inferenceMs)
+                binding.metricsAccuracy.text = getString(R.string.test_mode_metric_detections, signs.size)
+                binding.metricsPrecision.text = getString(R.string.test_mode_metric_top_confidence, topConf * 100)
+                binding.metricsRecall.text = getString(R.string.test_mode_metric_inference_time, inferenceMs)
 
                 if (signs.isEmpty()) {
                     binding.resultsText.text =
-                        getString(R.string.test_mode_no_signs_above_threshold, (threshold * 100).toInt())
+                        getString(R.string.test_mode_no_signs_threshold, (threshold * 100).toInt())
                 } else {
                     val sb = StringBuilder()
                     signs.forEachIndexed { i, sign ->
@@ -214,7 +222,10 @@ class TestModeActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val threshold = SettingsManager.getConfidenceThreshold(this@TestModeActivity)
             val engine = inferenceEngine ?: withContext(Dispatchers.Default) {
-                OnnxInferenceEngine(this@TestModeActivity).also { inferenceEngine = it }
+                OnnxInferenceEngine(
+                    this@TestModeActivity,
+                    SettingsManager.getModelRegion(this@TestModeActivity)
+                ).also { inferenceEngine = it }
             }
             if (!engine.isModelLoaded) {
                 binding.resultsText.text = getString(R.string.test_mode_model_failed)
@@ -426,6 +437,90 @@ class TestModeActivity : AppCompatActivity() {
         }
     }
 
+    private fun runVideoInference(uri: Uri) {
+        showImagePreviewMode()
+        binding.resultsText.text = getString(R.string.test_mode_processing_video)
+        setTestInputsEnabled(false)
+
+        val threshold = SettingsManager.getConfidenceThreshold(this)
+        val engine = inferenceEngine ?: OnnxInferenceEngine(
+            this, SettingsManager.getModelRegion(this)
+        ).also { inferenceEngine = it }
+        videoFileInference = VideoFileInference(engine, threshold)
+
+        // Channel buffers up to 2 annotated frames; drops old ones if UI is slow
+        val frameChannel = Channel<Pair<Bitmap, String>>(
+            capacity = 2,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST
+        )
+
+        videoJob = lifecycleScope.launch {
+            // Producer: inference on Default dispatcher
+            launch(Dispatchers.Default) {
+                var frameCount = 0
+                var fpsFrameCount = 0
+                var lastFpsTime = System.currentTimeMillis()
+                videoFileInference!!.processVideo(
+                    context = this@TestModeActivity,
+                    uri = uri,
+                    frameIntervalMs = 1000L
+                ) { timestampMs, frame, signs ->
+                    frameCount++
+                    fpsFrameCount++
+
+                    val now = System.currentTimeMillis()
+                    val elapsed = now - lastFpsTime
+                    if (elapsed >= 1000L) {
+                        val fps = fpsFrameCount * 1000f / elapsed
+                        fpsFrameCount = 0
+                        lastFpsTime = now
+                        withContext(Dispatchers.Main) {
+                            binding.fpsText.text = getString(R.string.test_mode_fps, fps)
+                        }
+                    }
+
+                    val annotated = annotateFrame(frame, signs)
+                    val label = buildLabel(frameCount, timestampMs, signs)
+                    frameChannel.trySend(annotated to label)
+                }
+                frameChannel.close()
+            }
+
+            // Consumer: UI updates on Main dispatcher
+            launch(Dispatchers.Main) {
+                for ((bitmap, label) in frameChannel) {
+                    binding.previewImage.setImageBitmap(bitmap)
+                    binding.resultsText.text = label
+                }
+                binding.resultsText.text = getString(R.string.test_mode_video_done)
+                setTestInputsEnabled(true)
+            }
+        }
+    }
+
+    private fun annotateFrame(frame: Bitmap, signs: List<TrafficSign>): Bitmap {
+        val annotated = frame.copy(Bitmap.Config.ARGB_8888, true)
+        val canvas = Canvas(annotated)
+        for (sign in signs) {
+            val box = sign.boundingBox
+            boxPaint.color = if (sign.isCritical) Color.RED else Color.GREEN
+            canvas.drawRect(box.left, box.top, box.right, box.bottom, boxPaint)
+            val name = SignLabelToSpeech.toDisplayName(sign.label)
+            val label = "$name ${"%.0f".format(sign.confidence * 100)}%"
+            val textWidth = textPaint.measureText(label)
+            val textHeight = textPaint.fontMetrics.let { it.descent - it.ascent }
+            canvas.drawRect(box.left, box.top - textHeight - 8f, box.left + textWidth + 16f, box.top, textBgPaint)
+            canvas.drawText(label, box.left + 8f, box.top - 8f, textPaint)
+        }
+        return annotated
+    }
+
+    private fun buildLabel(frameCount: Int, timestampMs: Long, signs: List<TrafficSign>): String {
+        return if (signs.isEmpty())
+            getString(R.string.test_mode_video_frame_label, frameCount, timestampMs)
+        else
+            signs.joinToString("\n") { "${SignLabelToSpeech.toDisplayName(it.label)} ${"%.1f".format(it.confidence * 100)}%" }
+    }
     private fun annotateBitmap(bitmap: Bitmap, signs: List<TrafficSign>): Bitmap {
         val annotated = bitmap.copy(Bitmap.Config.ARGB_8888, true)
         val canvas = Canvas(annotated)
@@ -477,6 +572,7 @@ class TestModeActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        videoJob?.cancel()
         stopLiveVideo()
         inferenceEngine?.close()
         ttsHelper.shutdown()
@@ -484,5 +580,6 @@ class TestModeActivity : AppCompatActivity() {
 
     companion object {
         private const val VIDEO_INFER_POLL_MS = 350L
+        private const val VIDEO_TTS_REPEAT_MS = 10_000L
     }
 }

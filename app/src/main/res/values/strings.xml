@@ -105,6 +105,7 @@ Always pay attention to traffic signs while driving</string>
     <string name="test_mode_accuracy_default">Accuracy: &#8212;</string>
     <string name="test_mode_precision_default">Precision: &#8212;</string>
     <string name="test_mode_recall_default">Recall: &#8212;</string>
+    <string name="test_mode_fps_default">FPS: &#8212;</string>
     <string name="test_mode_timing_default">Avg. inference: &#8212; ms</string>
     <string name="test_media_section">Choose media</string>
     <string name="test_preview_section">Preview</string>
@@ -167,4 +168,15 @@ Always pay attention to traffic signs while driving</string>
     <string name="gallery_pick_image">Pick from gallery</string>
     <string name="gallery_image_desc">Selected image for detection</string>
     <string name="start_detection">Start detection</string>
+
+    <!-- Test mode runtime strings -->
+    <string name="test_mode_running_inference">Running inference…</string>
+    <string name="test_mode_processing_video">Processing video…</string>
+    <string name="test_mode_video_done">Done.</string>
+    <string name="test_mode_metric_detections">Detections: %1$d</string>
+    <string name="test_mode_metric_top_confidence">Top confidence: %1$.1f%%</string>
+    <string name="test_mode_metric_inference_time">Inference time: %1$d ms</string>
+    <string name="test_mode_no_signs_threshold">No signs detected above %1$d%% confidence.</string>
+    <string name="test_mode_fps">FPS: %1$.1f</string>
+    <string name="test_mode_video_frame_label">Frame %1$d (%2$dms): No signs</string>
 </resources>
