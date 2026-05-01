@@ -7,7 +7,6 @@ import com.example.tsrapp.R
 import com.example.tsrapp.databinding.ActivitySettingsBinding
 import com.example.tsrapp.util.SettingsManager
 import com.example.tsrapp.util.TextToSpeechHelper
-import com.google.android.material.slider.Slider
 
 class SettingsActivity : AppCompatActivity() {
 
@@ -18,6 +17,14 @@ class SettingsActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivitySettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        // Handle edge-to-edge and system bar insets
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
+            val systemBars = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            view.setPadding(0, systemBars.top, 0, systemBars.bottom)
+            insets
+        }
 
         binding.backButton.setOnClickListener { finish() }
 
@@ -49,13 +56,11 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun setupRegion() {
-        val regions = listOf("EU", "US", "ASIA")
         val currentRegion = SettingsManager.getRegion(this)
         updateRegionButtons(currentRegion)
 
         binding.regionEu.setOnClickListener { selectRegion("EU") }
         binding.regionUs.setOnClickListener { selectRegion("US") }
-        binding.regionAsia.setOnClickListener { selectRegion("ASIA") }
     }
 
     private fun selectRegion(region: String) {
@@ -69,15 +74,12 @@ class SettingsActivity : AppCompatActivity() {
 
         binding.regionEu.setBackgroundResource(if (selected == "EU") R.drawable.bg_region_active else R.drawable.bg_region_inactive)
         binding.regionUs.setBackgroundResource(if (selected == "US") R.drawable.bg_region_active else R.drawable.bg_region_inactive)
-        binding.regionAsia.setBackgroundResource(if (selected == "ASIA") R.drawable.bg_region_active else R.drawable.bg_region_inactive)
 
         binding.regionEu.setTextColor(if (selected == "EU") activeColor else inactiveColor)
         binding.regionUs.setTextColor(if (selected == "US") activeColor else inactiveColor)
-        binding.regionAsia.setTextColor(if (selected == "ASIA") activeColor else inactiveColor)
     }
 
     private fun setupModel() {
-        val models = listOf("CNN v2.1", "CNN v1.8", "Lite v2.0")
         var currentModel = "CNN v2.1"
         updateModelButtons(currentModel)
 
@@ -101,13 +103,13 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun setupThreshold() {
         val current = SettingsManager.getConfidenceThreshold(this)
-        binding.confidenceSlider.value = current * 100f
+        binding.confidenceSlider.value = (Math.round(current * 100f / 5f) * 5f).coerceIn(0f, 100f)
         binding.confidenceValue.text = getString(R.string.settings_conf_threshold_value, (current * 100).toInt())
 
-        binding.confidenceSlider.addOnChangeListener(Slider.OnChangeListener { _, value, _ ->
+        binding.confidenceSlider.addOnChangeListener { _, value, _ ->
             SettingsManager.setConfidenceThreshold(this, value / 100f)
             binding.confidenceValue.text = getString(R.string.settings_conf_threshold_value, value.toInt())
-        })
+        }
     }
 
     private fun setupTtsTest() {
@@ -116,12 +118,9 @@ class SettingsActivity : AppCompatActivity() {
                 Toast.makeText(this, R.string.settings_tts_turn_on_first, Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            
-            // Lazy initialize ttsHelper only when needed
             if (ttsHelper == null) {
                 ttsHelper = TextToSpeechHelper(this)
             }
-            
             ttsHelper?.initialize { success ->
                 if (success) {
                     ttsHelper?.speak(getString(R.string.settings_tts_test_phrase))

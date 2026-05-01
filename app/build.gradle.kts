@@ -1,12 +1,13 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.org.jetbrains.kotlin.android)
+    alias(libs.plugins.compose.compiler)
 }
 
 android {
     namespace = "com.example.tsrapp"
     compileSdk = 36
-    ndkVersion = "25.2.9519653"
+    ndkVersion = "27.2.12479018"
 
     defaultConfig {
         applicationId = "com.example.tsrapp"
@@ -51,6 +52,7 @@ android {
 
     buildFeatures {
         viewBinding = true
+        compose = true
     }
 
     androidResources {
@@ -90,6 +92,16 @@ dependencies {
 
     // ONNX Runtime for on-device model inference
     implementation(libs.onnxruntime.android)
+
+    // Jetpack Compose
+    implementation(platform(libs.compose.bom))
+    implementation(libs.compose.ui)
+    implementation(libs.compose.material3)
+    implementation(libs.compose.animation)
+    implementation(libs.compose.ui.tooling.preview)
+    implementation(libs.activity.compose)
+    implementation(libs.lifecycle.runtime.compose)
+    debugImplementation(libs.compose.ui.tooling)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)

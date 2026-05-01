@@ -58,13 +58,14 @@ Built with Kotlin + CameraX + ONNX Runtime for Android.
 **Key files:**
 | File | Description |
 |------|-------------|
-| `app/src/main/java/.../ml/OnnxInferenceEngine.kt` | Loads `model.onnx`, runs YOLOv8 inference, applies NMS |
-| `app/src/main/java/.../data/repository/TSRRepository.kt` | Calls inference engine, returns detected signs |
-| `app/src/main/java/.../ui/main/MainActivity.kt` | Camera feed, detection overlay, TTS announcements |
-| `app/src/main/java/.../ui/main/MainViewModel.kt` | MVVM ViewModel, processes camera frames |
-| `app/src/main/java/.../ui/main/DetectionOverlayView.kt` | Draws bounding boxes and labels on screen |
-| `app/src/main/java/.../util/SettingsManager.kt` | User settings (confidence threshold, TTS, region) |
-| `app/src/main/assets/model.onnx` | **Place exported model here** (not in repo — too large) |
+| `app/src/main/java/.../ml/OnnxInferenceEngine.kt` | Loads regional ONNX models, runs YOLOv8 inference, applies NMS & Cascade Refinement |
+| `app/src/main/java/.../data/repository/TSRRepository.kt` | Calls inference engine based on user-selected region |
+| `app/src/main/java/.../ui/main/MainActivity.kt` | Camera feed, detection overlay, TTS announcements with edge-to-edge UI |
+| `app/src/main/java/.../ui/main/MainViewModel.kt` | MVVM ViewModel, manages inference lifecycle and frame processing |
+| `app/src/main/java/.../ui/main/DetectionOverlayView.kt` | Modernized overlay with rounded boxes and readable labels |
+| `app/src/main/java/.../util/SettingsManager.kt` | Handles region (US/EU), confidence, and hardware acceleration settings |
+| `app/src/main/assets/us_best.onnx` | **Place US model here** (mapped to `us_classes.json`) |
+| `app/src/main/assets/eu_best.onnx` | **Place EU model here** (mapped to `eu_classes.json`) |
 
 **To run the app:**
 
@@ -132,23 +133,23 @@ Run `download_datasets.ipynb` first to populate the dataset before running any t
 ## How It Works
 
 ```
-model.onnx loaded by OnnxInferenceEngine.kt
+Regional .onnx loaded by OnnxInferenceEngine.kt (via NNAPI or CPU)
         ↓
-Camera frame → letterbox preprocess → YOLOv8 inference → NMS → TrafficSign list
+Camera frame → letterbox preprocess → YOLOv8 inference → NMS → Cascade Refinement (US)
         ↓
-DetectionOverlayView draws boxes + TTS speaks sign name
+DetectionOverlayView draws boxes + TTS speaks sign name (priority queue based)
 ```
 
 ---
 
 ## Tech Stack
 
-| Layer               | Technology                                             |
-| ------------------- | ------------------------------------------------------ |
-| Android UI          | Kotlin, CameraX, MVVM, LiveData                        |
-| On-device inference | ONNX Runtime for Android 1.16.3                        |
-| Native utilities    | C++ (Tensor class, Logger, JNI)                        |
-| Model               | YOLOv8 (up to 55 US traffic sign classes), ONNX format |
+| Layer               | Technology                                                |
+| ------------------- | --------------------------------------------------------- |
+| Android UI          | Kotlin, CameraX, MVVM, LiveData, NoActionBar Design       |
+| On-device inference | ONNX Runtime for Android 1.16.3 + NNAPI Support           |
+| Native utilities    | C++ (Tensor class, Logger, JNI)                           |
+| Models              | Regional YOLOv8s (US/EU) + MobileNetV3 Cascade Refinement |
 
 ---
 

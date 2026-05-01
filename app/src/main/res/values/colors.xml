@@ -35,6 +35,11 @@
     <color name="home_text_muted">#8E8E93</color>
     <color name="home_text_on_dark">#80FFFFFF</color>
 
+    <!-- Detection overlay — softer than raw #00FF00 / #FF0000 -->
+    <color name="detection_normal">#30D158</color>
+    <color name="detection_critical">#FF453A</color>
+
+
     <!-- Legacy (kept for DetectionOverlayView) -->
     <color name="navy_500">#1E3A8A</color>
     <color name="navy_700">#1E40AF</color>

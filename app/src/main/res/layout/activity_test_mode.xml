@@ -20,8 +20,8 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:paddingTop="40dp"
-            android:paddingBottom="16dp">
+            android:paddingTop="@dimen/tsr_space_xl"
+            android:paddingBottom="@dimen/tsr_space_md">
 
             <ImageButton
                 android:id="@+id/backButton"
@@ -90,8 +90,8 @@
         <FrameLayout
             android:id="@+id/previewContainer"
             android:layout_width="match_parent"
-            android:layout_height="300dp"
-            android:layout_marginTop="20dp"
+            android:layout_height="@dimen/tsr_preview_height"
+            android:layout_marginTop="@dimen/tsr_space_lg"
             android:background="@color/tsr_divider">
 
             <ImageView
