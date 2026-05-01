@@ -14,8 +14,8 @@ using on-device YOLOv8 inference — no internet connection required.
     <td align="center"><b>EU Model</b></td>
   </tr>
   <tr>
-    <td><img src=".github/assets/us_demo.gif" width="400"/></td>
-    <td><img src=".github/assets/eu_demo.gif" width="400"/></td>
+    <td><img src=".github/readme_assets/us_demo.gif" width="400"/></td>
+    <td><img src=".github/readme_assets/eu_demo.gif" width="400"/></td>
   </tr>
 </table>
 
