@@ -1,7 +1,6 @@
 package com.example.tsrapp.ui.main
 
 import android.os.Bundle
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.tsrapp.R
 import com.example.tsrapp.databinding.ActivitySettingsBinding
@@ -81,7 +80,6 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun setupModel() {
-        val models = listOf("CNN v2.1", "CNN v1.8", "Lite v2.0")
         var currentModel = "CNN v2.1"
         updateModelButtons(currentModel)
 
@@ -108,10 +106,10 @@ class SettingsActivity : AppCompatActivity() {
         binding.confidenceSlider.value = (Math.round(current * 100f / 5f) * 5f).coerceIn(0f, 100f)
         binding.confidenceValue.text = getString(R.string.settings_conf_threshold_value, (current * 100).toInt())
 
-        binding.confidenceSlider.addOnChangeListener(Slider.OnChangeListener { _, value, _ ->
+        binding.confidenceSlider.addOnChangeListener { _, value, _ ->
             SettingsManager.setConfidenceThreshold(this, value / 100f)
             binding.confidenceValue.text = getString(R.string.settings_conf_threshold_value, value.toInt())
-        })
+        }
     }
 
     /*

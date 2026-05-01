@@ -1,4 +1,4 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
+<resources>
     <style name="Theme.TSRApp" parent="Theme.MaterialComponents.Light.NoActionBar">
         <item name="colorPrimary">@color/tsr_navy</item>
         <item name="colorPrimaryVariant">@color/tsr_navy_light</item>

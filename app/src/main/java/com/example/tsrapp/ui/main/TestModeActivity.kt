@@ -2,6 +2,7 @@ package com.example.tsrapp.ui.main
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import androidx.core.graphics.scale
 import android.graphics.Color
 import android.graphics.ImageDecoder
 import android.graphics.Paint
@@ -151,7 +152,7 @@ class TestModeActivity : AppCompatActivity() {
 
     private fun runInference(uri: Uri) {
         showImagePreviewMode()
-        binding.resultsText.text = "Running inference..."
+        binding.resultsText.text = getString(R.string.test_mode_running_inference)
         setTestInputsEnabled(false)
 
         lifecycleScope.launch {
@@ -164,7 +165,7 @@ class TestModeActivity : AppCompatActivity() {
                     OnnxInferenceEngine(this@TestModeActivity).also { inferenceEngine = it }
                 }
                 if (!engine.isModelLoaded) {
-                    binding.resultsText.text = "Model failed to load. Check logcat for details."
+                    binding.resultsText.text = getString(R.string.test_mode_model_failed)
                     return@launch
                 }
                 val signs = withContext(Dispatchers.Default) {
@@ -176,13 +177,13 @@ class TestModeActivity : AppCompatActivity() {
                 binding.previewImage.setImageBitmap(annotated)
 
                 val topConf = signs.maxOfOrNull { it.confidence } ?: 0f
-                binding.metricsAccuracy.text = "Detections: ${signs.size}"
-                binding.metricsPrecision.text = "Top confidence: ${"%.1f".format(topConf * 100)}%"
-                binding.metricsRecall.text = "Inference time: ${inferenceMs}ms"
+                binding.metricsAccuracy.text = getString(R.string.test_mode_detections_count, signs.size)
+                binding.metricsPrecision.text = getString(R.string.test_mode_top_confidence, topConf * 100)
+                binding.metricsRecall.text = getString(R.string.test_mode_inference_time, inferenceMs)
 
                 if (signs.isEmpty()) {
                     binding.resultsText.text =
-                        "No signs detected above ${(threshold * 100).toInt()}% confidence."
+                        getString(R.string.test_mode_no_signs_above_threshold, (threshold * 100).toInt())
                 } else {
                     val sb = StringBuilder()
                     signs.forEachIndexed { i, sign ->
@@ -195,7 +196,7 @@ class TestModeActivity : AppCompatActivity() {
                     announceAllSignsForTest(signs)
                 }
             } catch (e: Exception) {
-                binding.resultsText.text = "Error: ${e.message ?: "unknown"}"
+                binding.resultsText.text = getString(R.string.test_mode_error, e.message ?: "unknown")
             } finally {
                 setTestInputsEnabled(true)
             }
@@ -216,7 +217,7 @@ class TestModeActivity : AppCompatActivity() {
                 OnnxInferenceEngine(this@TestModeActivity).also { inferenceEngine = it }
             }
             if (!engine.isModelLoaded) {
-                binding.resultsText.text = "Model failed to load. Check logcat for details."
+                binding.resultsText.text = getString(R.string.test_mode_model_failed)
                 setTestInputsEnabled(true)
                 return@launch
             }
@@ -270,7 +271,7 @@ class TestModeActivity : AppCompatActivity() {
                     contentResolver.openAssetFileDescriptor(uri, "r")?.use { afd ->
                         setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
                     }
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     // Fallback: Copy to a local cache file (most reliable)
                     val tempFile = java.io.File(cacheDir, "temp_test_video.mp4")
                     contentResolver.openInputStream(uri)?.use { input ->
@@ -306,7 +307,7 @@ class TestModeActivity : AppCompatActivity() {
             }
         } catch (e: Exception) {
             setTestInputsEnabled(true)
-            binding.resultsText.text = "Video error: ${e.message ?: "unknown"}"
+            binding.resultsText.text = getString(R.string.test_mode_video_error, e.message ?: "unknown")
         }
     }
 
@@ -455,9 +456,7 @@ class TestModeActivity : AppCompatActivity() {
             } else {
                 val full = tw.getBitmap() ?: return null
                 if (full.width == targetW && full.height == targetH) full
-                else Bitmap.createScaledBitmap(full, targetW, targetH, true).also {
-                    if (it != full) full.recycle()
-                }
+                else full.scale(targetW, targetH).also { full.recycle() }
             }
         } catch (_: Exception) {
             null
@@ -485,6 +484,5 @@ class TestModeActivity : AppCompatActivity() {
 
     companion object {
         private const val VIDEO_INFER_POLL_MS = 350L
-        private const val VIDEO_TTS_REPEAT_MS = 10_000L
     }
 }
