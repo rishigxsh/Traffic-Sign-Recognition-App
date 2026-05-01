@@ -6,7 +6,6 @@ import com.example.tsrapp.R
 import com.example.tsrapp.databinding.ActivitySettingsBinding
 import com.example.tsrapp.util.SettingsManager
 import com.example.tsrapp.util.TextToSpeechHelper
-import com.google.android.material.slider.Slider
 
 class SettingsActivity : AppCompatActivity() {
 
